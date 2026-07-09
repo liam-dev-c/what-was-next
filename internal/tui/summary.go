@@ -45,9 +45,9 @@ func (m Model) viewSummary() string {
 		b.WriteString(helpStyle.Render("No time tracked today.\n"))
 	}
 	for _, td := range m.summary.Times {
-		b.WriteString(fmt.Sprintf("  %-30s %s\n", td.Task.Title, fmtDuration(td.Duration)))
+		fmt.Fprintf(&b, "  %-30s %s\n", td.Task.Title, fmtDuration(td.Duration))
 	}
-	b.WriteString(fmt.Sprintf("\n  %-30s %s\n", "TOTAL", fmtDuration(m.summary.Total)))
+	fmt.Fprintf(&b, "\n  %-30s %s\n", "TOTAL", fmtDuration(m.summary.Total))
 
 	b.WriteString(helpStyle.Render("\nesc back · q quit"))
 	return b.String()
