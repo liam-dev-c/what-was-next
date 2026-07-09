@@ -1,6 +1,6 @@
 module github.com/liam-dev-c/what-was-next
 
-go 1.26.4
+go 1.26
 
 require modernc.org/sqlite v1.53.0
 
