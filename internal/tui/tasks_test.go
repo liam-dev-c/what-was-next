@@ -65,3 +65,12 @@ func TestSwitchToProjectsAndSummary(t *testing.T) {
 		t.Fatal("want screenSummary after 's'")
 	}
 }
+
+func TestStatusClearsOnNextCommandKey(t *testing.T) {
+	m := newModel(t)
+	m.status = "stale error"
+	mi, _ := m.updateTasks(key('j')) // any command key
+	if mi.(Model).status != "" {
+		t.Fatalf("want status cleared on next command key, got %q", mi.(Model).status)
+	}
+}

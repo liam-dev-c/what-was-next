@@ -11,6 +11,7 @@ func (m Model) updateProjects(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.editing {
 		return m.updateProjectInput(msg)
 	}
+	m.status = ""
 	switch msg.String() {
 	case "j", "down":
 		if m.projCursor < len(m.projects)-1 {

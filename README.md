@@ -20,6 +20,9 @@ go install github.com/liam-dev-c/what-was-next@latest
 Run `what-was-next`. Data is stored at `~/.config/what-was-next/what-was-next.db`
 (honoring `XDG_CONFIG_HOME`).
 
+The daily summary groups by **UTC** calendar day, so near midnight in a non-UTC
+timezone a task may appear under an adjacent date.
+
 ### Keys
 
 | Key | Action |

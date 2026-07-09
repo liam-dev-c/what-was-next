@@ -45,3 +45,34 @@ func TestDailySummaryExcludesOtherDays(t *testing.T) {
 		t.Fatalf("want 0 completed today, got %d", len(sum.Completed))
 	}
 }
+
+func TestDailySummaryBucketsSubSecondBoundary(t *testing.T) {
+	s := newTestStore(t)
+	pid := projectID(t, s)
+	tk, _ := s.CreateTask(pid, "Edge")
+	// Completed just after midnight UTC, with a sub-second fraction.
+	justAfterMidnight := time.Date(2026, 7, 9, 0, 0, 0, 500_000_000, time.UTC)
+	s.db.Exec(`UPDATE tasks SET done = 1, done_at = ? WHERE id = ?`, justAfterMidnight, tk.ID)
+	// A closed entry started 00:00:00.5, ended 00:00:01.5 => 1s.
+	s.db.Exec(`INSERT INTO time_entries (task_id, started_at, ended_at) VALUES (?, ?, ?)`,
+		tk.ID, justAfterMidnight, justAfterMidnight.Add(time.Second))
+
+	sum, err := s.DailySummary(time.Date(2026, 7, 9, 12, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatalf("DailySummary: %v", err)
+	}
+	if len(sum.Completed) != 1 {
+		t.Fatalf("want the sub-second task in its own day, got %d completed", len(sum.Completed))
+	}
+	if sum.Total != time.Second {
+		t.Fatalf("want 1s tracked, got %s", sum.Total)
+	}
+	// Prior day must exclude it.
+	prev, err := s.DailySummary(time.Date(2026, 7, 8, 12, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatalf("DailySummary prev: %v", err)
+	}
+	if len(prev.Completed) != 0 || prev.Total != 0 {
+		t.Fatalf("prior day should exclude the 00:00:00.5 task, got %d completed / %s", len(prev.Completed), prev.Total)
+	}
+}

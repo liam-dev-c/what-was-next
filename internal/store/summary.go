@@ -55,8 +55,9 @@ func (s *Store) DailySummary(day time.Time) (DailySummary, error) {
 	// Per-task time from closed entries started within the day. Durations are
 	// summed in Go by scanning started_at/ended_at as time.Time (matching
 	// TaskDuration in timelog.go). This deliberately avoids SQLite date
-	// functions: the driver stores time.Time in Go's t.String() format
-	// ("2006-01-02 15:04:05 -0700 MST"), which julianday() cannot parse.
+	// functions: modernc.org/sqlite stores time.Time as RFC3339Nano, whose
+	// 9-digit fractional seconds exceed SQLite's millisecond precision, so
+	// julianday()/date() return NULL on these values.
 	trows, err := s.db.Query(
 		`SELECT t.id, t.project_id, t.title, t.notes, t.done, t.sort_order,
 		        t.created_at, t.done_at, e.started_at, e.ended_at

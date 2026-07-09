@@ -18,6 +18,7 @@ func (m *Model) loadSummary() {
 }
 
 func (m Model) updateSummary(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	m.status = ""
 	switch msg.String() {
 	case "esc", "s", "q":
 		m.screen = screenTasks

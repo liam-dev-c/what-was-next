@@ -13,6 +13,7 @@ func (m Model) updateTasks(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.editing {
 		return m.updateTaskInput(msg)
 	}
+	m.status = ""
 	switch msg.String() {
 	case "j", "down":
 		if m.cursor < len(m.tasks)-1 {
