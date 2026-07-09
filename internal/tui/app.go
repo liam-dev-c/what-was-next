@@ -5,6 +5,7 @@ package tui
 import (
 	"fmt"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/liam-dev-c/what-was-next/internal/store"
 )
@@ -32,7 +33,7 @@ type Model struct {
 	// input state (task add/edit) — populated in Task 7
 	editing bool
 	editID  int64 // 0 == adding a new task
-	input   textInput
+	input   textinput.Model
 
 	// project switcher cursor — populated in Task 8
 	projCursor int
@@ -44,9 +45,9 @@ type Model struct {
 	height int
 }
 
-// textInput is a thin alias so app.go compiles before Task 7 wires the real
-// bubbles/textinput; Task 7 replaces this with textinput.Model.
-type textInput = struct{ Value string }
+// storeTask is an alias so other files in this package can name store.Task
+// without importing the store package a second time under a new name.
+type storeTask = store.Task
 
 func New(s *store.Store) (Model, error) {
 	m := Model{store: s, screen: screenTasks}
@@ -126,5 +127,11 @@ func (m Model) View() string {
 		return m.viewSummary()
 	default:
 		return m.viewTasks()
+	}
+}
+
+func (m *Model) setStatus(err error) {
+	if err != nil {
+		m.status = err.Error()
 	}
 }
