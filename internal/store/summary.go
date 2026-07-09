@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"sort"
 	"time"
 )
 
@@ -51,40 +52,60 @@ func (s *Store) DailySummary(day time.Time) (DailySummary, error) {
 		return sum, err
 	}
 
-	// Per-task time from closed entries started within the day.
-	// Note: substr(..., 1, 19) extracts the timestamp portion from RFC3339 format
-	// (which Go's sqlite driver uses), allowing julianday() to parse it.
-	// Round to nearest second to avoid floating point precision errors.
+	// Per-task time from closed entries started within the day. Durations are
+	// summed in Go by scanning started_at/ended_at as time.Time (matching
+	// TaskDuration in timelog.go). This deliberately avoids SQLite date
+	// functions: the driver stores time.Time in Go's t.String() format
+	// ("2006-01-02 15:04:05 -0700 MST"), which julianday() cannot parse.
 	trows, err := s.db.Query(
 		`SELECT t.id, t.project_id, t.title, t.notes, t.done, t.sort_order,
-		        t.created_at, t.done_at,
-		        ROUND(SUM((julianday(substr(e.ended_at, 1, 19)) - julianday(substr(e.started_at, 1, 19))) * 86400.0)) AS secs
+		        t.created_at, t.done_at, e.started_at, e.ended_at
 		 FROM time_entries e
 		 JOIN tasks t ON t.id = e.task_id
 		 WHERE e.ended_at IS NOT NULL AND e.started_at >= ? AND e.started_at < ?
-		 GROUP BY t.id
-		 ORDER BY secs DESC`, start, end,
+		 ORDER BY t.id`, start, end,
 	)
 	if err != nil {
 		return sum, fmt.Errorf("summary times: %w", err)
 	}
 	defer trows.Close()
+
+	type taskAgg struct {
+		task     Task
+		duration time.Duration
+	}
+	order := []int64{}
+	byTask := map[int64]*taskAgg{}
 	for trows.Next() {
 		var t Task
 		var doneAt *time.Time
-		var secs *float64
+		var started, ended time.Time
 		if err := trows.Scan(
 			&t.ID, &t.ProjectID, &t.Title, &t.Notes, &t.Done,
-			&t.SortOrder, &t.CreatedAt, &doneAt, &secs,
+			&t.SortOrder, &t.CreatedAt, &doneAt, &started, &ended,
 		); err != nil {
 			return sum, fmt.Errorf("scan times: %w", err)
 		}
 		t.DoneAt = doneAt
-		if secs != nil {
-			d := time.Duration(int64(*secs) * int64(time.Second))
-			sum.Times = append(sum.Times, TaskDuration{Task: t, Duration: d})
-			sum.Total += d
+		a, ok := byTask[t.ID]
+		if !ok {
+			a = &taskAgg{task: t}
+			byTask[t.ID] = a
+			order = append(order, t.ID)
 		}
+		a.duration += ended.Sub(started)
 	}
-	return sum, trows.Err()
+	if err := trows.Err(); err != nil {
+		return sum, err
+	}
+	for _, id := range order {
+		a := byTask[id]
+		sum.Times = append(sum.Times, TaskDuration{Task: a.task, Duration: a.duration})
+		sum.Total += a.duration
+	}
+	// Order by duration descending (as the prior SQL did with ORDER BY secs DESC).
+	sort.SliceStable(sum.Times, func(i, j int) bool {
+		return sum.Times[i].Duration > sum.Times[j].Duration
+	})
+	return sum, nil
 }
