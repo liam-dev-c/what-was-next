@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/liam-dev-c/what-was-next/internal/store"
 	"github.com/liam-dev-c/what-was-next/internal/tui"
 )
@@ -33,7 +33,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	p := tea.NewProgram(model, tea.WithAltScreen())
+	p := tea.NewProgram(model)
 	_, err = p.Run()
 	return err
 }

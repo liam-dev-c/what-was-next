@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 func TestSummaryLoadsAndRenders(t *testing.T) {
@@ -23,7 +23,7 @@ func TestSummaryLoadsAndRenders(t *testing.T) {
 func TestSummaryEscReturns(t *testing.T) {
 	m := newModel(t)
 	m.screen = screenSummary
-	mi, _ := m.updateSummary(tea.KeyMsg{Type: tea.KeyEsc})
+	mi, _ := m.updateSummary(tea.KeyPressMsg{Code: tea.KeyEscape})
 	if mi.(Model).screen != screenTasks {
 		t.Fatal("want return to tasks on esc")
 	}

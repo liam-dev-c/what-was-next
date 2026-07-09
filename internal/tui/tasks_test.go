@@ -3,10 +3,10 @@ package tui
 import (
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
-func key(r rune) tea.KeyMsg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}} }
+func key(r rune) tea.KeyPressMsg { return tea.KeyPressMsg{Code: r, Text: string(r)} }
 
 func TestAddTaskFlow(t *testing.T) {
 	m := newModel(t)
@@ -22,7 +22,7 @@ func TestAddTaskFlow(t *testing.T) {
 		m = mi.(Model)
 	}
 	// Enter to commit.
-	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	mi, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = mi.(Model)
 	if m.editing {
 		t.Fatal("want editing off after Enter")
@@ -36,7 +36,7 @@ func TestToggleDone(t *testing.T) {
 	m := newModel(t)
 	m.store.CreateTask(m.activeProject().ID, "Task")
 	m.reloadTasks()
-	mi, _ := m.updateTasks(tea.KeyMsg{Type: tea.KeyEnter})
+	mi, _ := m.updateTasks(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = mi.(Model)
 	if !m.tasks[0].Done {
 		t.Fatal("want task done after Enter toggle")

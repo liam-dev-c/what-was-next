@@ -3,11 +3,11 @@ package tui
 import (
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 )
 
-func (m Model) updateProjects(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m Model) updateProjects(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if m.editing {
 		return m.updateProjectInput(msg)
 	}
@@ -28,7 +28,7 @@ func (m Model) updateProjects(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.editing = true
 		m.editID = 0
 		return m, textinput.Blink
-	case "enter", " ":
+	case "enter", "space":
 		m.active = m.projCursor
 		m.cursor = 0
 		m.setStatus(m.reloadTasks())
@@ -39,8 +39,8 @@ func (m Model) updateProjects(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) updateProjectInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.Type {
+func (m Model) updateProjectInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch msg.Code {
 	case tea.KeyEnter:
 		name := strings.TrimSpace(m.input.Value())
 		if name != "" {
@@ -50,7 +50,7 @@ func (m Model) updateProjectInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		m.editing = false
 		return m, nil
-	case tea.KeyEsc:
+	case tea.KeyEscape:
 		m.editing = false
 		return m, nil
 	}
