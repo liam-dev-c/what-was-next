@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -146,7 +147,11 @@ func (m Model) viewTasks() string {
 		if running != nil && running.TaskID == t.ID {
 			clock = "⏱ "
 		}
-		line := fmt.Sprintf("%s%s %s%s", cursor, box, clock, t.Title)
+		suffix := ""
+		if d, ok := m.elapsedFor(t.ID); ok {
+			suffix = "  (" + fmtDuration(d) + ")"
+		}
+		line := fmt.Sprintf("%s%s %s%s%s", cursor, box, clock, t.Title, suffix)
 		switch {
 		case i == m.cursor:
 			line = selectedStyle.Render(line)
@@ -172,4 +177,17 @@ func (m Model) viewTasks() string {
 	b.WriteString(helpStyle.Render(
 		"\na add · e edit · enter done · d del · J/K move · t timer · p projects · s summary · q quit"))
 	return b.String()
+}
+
+func fmtDuration(d time.Duration) string {
+	d = d.Round(time.Second)
+	h := d / time.Hour
+	d -= h * time.Hour
+	mnt := d / time.Minute
+	d -= mnt * time.Minute
+	s := d / time.Second
+	if h > 0 {
+		return fmt.Sprintf("%dh%02dm", h, mnt)
+	}
+	return fmt.Sprintf("%dm%02ds", mnt, s)
 }

@@ -4,6 +4,7 @@ package tui
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -95,10 +96,37 @@ func (m Model) activeProject() store.Project {
 	return m.projects[m.active]
 }
 
-func (m Model) Init() tea.Cmd { return nil }
+type tickMsg struct{}
+
+func tickCmd() tea.Cmd {
+	return tea.Tick(time.Second, func(time.Time) tea.Msg { return tickMsg{} })
+}
+
+// elapsedFor returns total tracked time for a task, including the live segment
+// if its timer is currently running.
+func (m Model) elapsedFor(taskID int64) (time.Duration, bool) {
+	closed, err := m.store.TaskDuration(taskID)
+	if err != nil {
+		return 0, false
+	}
+	total := closed
+	running, err := m.store.RunningEntry()
+	if err == nil && running != nil && running.TaskID == taskID {
+		total += time.Since(running.StartedAt)
+	}
+	if total == 0 && closed == 0 {
+		// Distinguish "no time at all" from "exactly zero": ok only if entries exist.
+		return 0, running != nil && running.TaskID == taskID
+	}
+	return total, true
+}
+
+func (m Model) Init() tea.Cmd { return tickCmd() }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tickMsg:
+		return m, tickCmd()
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 		return m, nil
