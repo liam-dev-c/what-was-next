@@ -47,3 +47,35 @@ func TestDeleteProject(t *testing.T) {
 		t.Errorf("want 1 project after delete, got %d", len(projects))
 	}
 }
+
+func TestDeleteProjectCascades(t *testing.T) {
+	s := newTestStore(t)
+	p, _ := s.CreateProject("Doomed")
+	// Insert a task and a time entry directly (task CRUD arrives in a later task).
+	res, err := s.db.Exec(
+		`INSERT INTO tasks (project_id, title, notes, done, sort_order, created_at)
+		 VALUES (?, 'child', '', 0, 1, ?)`, p.ID, s.now())
+	if err != nil {
+		t.Fatalf("insert task: %v", err)
+	}
+	taskID, _ := res.LastInsertId()
+	if _, err := s.db.Exec(
+		`INSERT INTO time_entries (task_id, started_at, ended_at) VALUES (?, ?, NULL)`,
+		taskID, s.now()); err != nil {
+		t.Fatalf("insert time entry: %v", err)
+	}
+
+	if err := s.DeleteProject(p.ID); err != nil {
+		t.Fatalf("DeleteProject: %v", err)
+	}
+
+	var tasks, entries int
+	s.db.QueryRow(`SELECT COUNT(*) FROM tasks WHERE project_id = ?`, p.ID).Scan(&tasks)
+	s.db.QueryRow(`SELECT COUNT(*) FROM time_entries WHERE task_id = ?`, taskID).Scan(&entries)
+	if tasks != 0 {
+		t.Errorf("want 0 tasks after cascade delete, got %d", tasks)
+	}
+	if entries != 0 {
+		t.Errorf("want 0 time entries after cascade delete, got %d", entries)
+	}
+}
