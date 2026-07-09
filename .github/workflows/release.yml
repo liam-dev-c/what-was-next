@@ -63,5 +63,5 @@ jobs:
           NEXT: ${{ steps.version.outputs.next }}
         run: |
           set -euo pipefail
-          gh release create "$NEXT" --title "$NEXT" --generate-notes \
+          gh release create "$NEXT" --title "$NEXT" --generate-notes --verify-tag \
             dist/what-was-next-darwin-*
