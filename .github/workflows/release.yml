@@ -15,6 +15,10 @@ jobs:
         with:
           fetch-tags: true
 
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+
       - name: Compute date-based tag
         id: version
         run: |
@@ -40,8 +44,24 @@ jobs:
           git tag -a "$NEXT" -m "Release $NEXT"
           git push origin "$NEXT"
 
+      - name: Build macOS binaries
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          # modernc.org/sqlite is pure Go, so CGO is not needed and we can
+          # cross-compile the macOS binaries from the Ubuntu runner.
+          for arch in amd64 arm64; do
+            out="dist/what-was-next-darwin-$arch"
+            echo "Building $out"
+            CGO_ENABLED=0 GOOS=darwin GOARCH="$arch" \
+              go build -trimpath -ldflags "-s -w" -o "$out" .
+          done
+
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           NEXT: ${{ steps.version.outputs.next }}
-        run: gh release create "$NEXT" --title "$NEXT" --generate-notes
+        run: |
+          set -euo pipefail
+          gh release create "$NEXT" --title "$NEXT" --generate-notes \
+            dist/what-was-next-darwin-*
