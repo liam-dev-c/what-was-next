@@ -5,6 +5,36 @@ import (
 	"time"
 )
 
+func TestDailySummaryUsesDayArgumentTimezone(t *testing.T) {
+	s := newTestStore(t)
+	pid := projectID(t, s)
+	tk, _ := s.CreateTask(pid, "Late")
+	// Completed at 2026-07-09T23:30:00Z. In a +10:00 zone that instant is
+	// 2026-07-10 09:30 local, so it belongs to the Jul-10 *local* day.
+	doneUTC := time.Date(2026, 7, 9, 23, 30, 0, 0, time.UTC)
+	s.db.Exec(`UPDATE tasks SET done = 1, done_at = ? WHERE id = ?`, doneUTC, tk.ID)
+
+	east := time.FixedZone("UTC+10", 10*3600)
+	jul10 := time.Date(2026, 7, 10, 12, 0, 0, 0, east)
+	sum, err := s.DailySummary(jul10)
+	if err != nil {
+		t.Fatalf("DailySummary jul10: %v", err)
+	}
+	if len(sum.Completed) != 1 {
+		t.Fatalf("want task in Jul-10 local day, got %d completed", len(sum.Completed))
+	}
+
+	// The Jul-9 local day (in +10) must NOT contain it.
+	jul9 := time.Date(2026, 7, 9, 12, 0, 0, 0, east)
+	sum9, err := s.DailySummary(jul9)
+	if err != nil {
+		t.Fatalf("DailySummary jul9: %v", err)
+	}
+	if len(sum9.Completed) != 0 {
+		t.Fatalf("want task excluded from Jul-9 local day, got %d", len(sum9.Completed))
+	}
+}
+
 func TestDailySummary(t *testing.T) {
 	s := newTestStore(t)
 	s.now = advancingClock() // 9:00, 10:00, 11:00, 12:00 on 2026-07-09

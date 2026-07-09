@@ -19,9 +19,14 @@ type DailySummary struct {
 }
 
 func (s *Store) DailySummary(day time.Time) (DailySummary, error) {
-	day = day.UTC()
-	start := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, time.UTC)
+	// The day window spans the calendar day of the given time in its own
+	// location, so "today" follows the user's timezone. loadSummary passes
+	// time.Now(), which carries the machine's local zone. Bounds are converted
+	// to UTC for the WHERE comparison because timestamps are stored in UTC.
+	loc := day.Location()
+	start := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, loc)
 	end := start.Add(24 * time.Hour)
+	startUTC, endUTC := start.UTC(), end.UTC()
 
 	sum := DailySummary{Day: start}
 
@@ -30,7 +35,7 @@ func (s *Store) DailySummary(day time.Time) (DailySummary, error) {
 		`SELECT id, project_id, title, notes, done, sort_order, created_at, done_at
 		 FROM tasks
 		 WHERE done = 1 AND done_at >= ? AND done_at < ?
-		 ORDER BY done_at`, start, end,
+		 ORDER BY done_at`, startUTC, endUTC,
 	)
 	if err != nil {
 		return sum, fmt.Errorf("summary completed: %w", err)
@@ -64,7 +69,7 @@ func (s *Store) DailySummary(day time.Time) (DailySummary, error) {
 		 FROM time_entries e
 		 JOIN tasks t ON t.id = e.task_id
 		 WHERE e.ended_at IS NOT NULL AND e.started_at >= ? AND e.started_at < ?
-		 ORDER BY t.id`, start, end,
+		 ORDER BY t.id`, startUTC, endUTC,
 	)
 	if err != nil {
 		return sum, fmt.Errorf("summary times: %w", err)
