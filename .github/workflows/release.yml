@@ -1,0 +1,47 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    name: Tag & release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          fetch-tags: true
+
+      - name: Compute date-based tag
+        id: version
+        run: |
+          set -euo pipefail
+          date=$(date -u +%Y-%m-%d)
+          # Nth release of the day: YYYY-MM-DD-N (N = today's tag count + 1).
+          n=$(( $(git tag --list "$date-*" | wc -l) + 1 ))
+          next="$date-$n"
+          echo "Next tag: $next"
+          echo "next=$next" >> "$GITHUB_OUTPUT"
+
+      - name: Create and push tag
+        env:
+          NEXT: ${{ steps.version.outputs.next }}
+        run: |
+          set -euo pipefail
+          if git rev-parse --verify --quiet "refs/tags/$NEXT"; then
+            echo "::error::Tag $NEXT already exists"
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$NEXT" -m "Release $NEXT"
+          git push origin "$NEXT"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEXT: ${{ steps.version.outputs.next }}
+        run: gh release create "$NEXT" --title "$NEXT" --generate-notes
