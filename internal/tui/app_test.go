@@ -3,7 +3,7 @@ package tui
 import (
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/liam-dev-c/what-was-next/internal/store"
 )
 
@@ -33,7 +33,7 @@ func TestNewSelectsDefaultProject(t *testing.T) {
 
 func TestQuitKey(t *testing.T) {
 	m := newModel(t)
-	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
+	_, cmd := m.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
 	if cmd == nil {
 		t.Fatal("want quit command on 'q', got nil")
 	}

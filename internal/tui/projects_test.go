@@ -3,7 +3,7 @@ package tui
 import (
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 func TestSelectProjectReloadsTasks(t *testing.T) {
@@ -17,7 +17,7 @@ func TestSelectProjectReloadsTasks(t *testing.T) {
 	// Move down to "Work" (index 1) and select it.
 	mi, _ := m.updateProjects(key('j'))
 	m = mi.(Model)
-	mi, _ = m.updateProjects(tea.KeyMsg{Type: tea.KeyEnter})
+	mi, _ = m.updateProjects(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = mi.(Model)
 
 	if m.screen != screenTasks {
@@ -40,7 +40,7 @@ func TestAddProjectFlow(t *testing.T) {
 		mi, _ = m.Update(key(r))
 		m = mi.(Model)
 	}
-	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	mi, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = mi.(Model)
 	names := make([]string, len(m.projects))
 	for i, p := range m.projects {

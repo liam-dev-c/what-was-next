@@ -5,11 +5,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 )
 
-func (m Model) updateTasks(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m Model) updateTasks(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if m.editing {
 		return m.updateTaskInput(msg)
 	}
@@ -31,7 +31,7 @@ func (m Model) updateTasks(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.beginEdit(t.ID, t.Title)
 			return m, textinput.Blink
 		}
-	case "enter", " ":
+	case "enter", "space":
 		if t, ok := m.selectedTask(); ok {
 			m.setStatus(m.store.SetTaskDone(t.ID, !t.Done))
 			m.setStatus(m.reloadTasks())
@@ -95,8 +95,8 @@ func (m *Model) beginEdit(id int64, initial string) {
 	m.editID = id
 }
 
-func (m Model) updateTaskInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.Type {
+func (m Model) updateTaskInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch msg.Code {
 	case tea.KeyEnter:
 		title := strings.TrimSpace(m.input.Value())
 		if title != "" {
@@ -110,7 +110,7 @@ func (m Model) updateTaskInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		m.editing = false
 		return m, nil
-	case tea.KeyEsc:
+	case tea.KeyEscape:
 		m.editing = false
 		return m, nil
 	}

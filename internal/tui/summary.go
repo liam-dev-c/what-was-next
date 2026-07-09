@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 func (m *Model) loadSummary() {
@@ -17,7 +17,7 @@ func (m *Model) loadSummary() {
 	m.summary = sum
 }
 
-func (m Model) updateSummary(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m Model) updateSummary(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	m.status = ""
 	switch msg.String() {
 	case "esc", "s", "q":

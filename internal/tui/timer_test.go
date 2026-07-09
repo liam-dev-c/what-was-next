@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 func TestTickKeepsTicking(t *testing.T) {
@@ -32,5 +32,5 @@ func TestElapsedForClosedTime(t *testing.T) {
 		t.Fatalf("want non-negative duration, got %s", d)
 	}
 	_ = time.Second
-	_ = tea.KeyMsg{}
+	_ = tea.KeyPressMsg{}
 }

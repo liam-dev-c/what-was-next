@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 	"github.com/liam-dev-c/what-was-next/internal/store"
 )
 
@@ -130,7 +130,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 		return m, nil
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Global quit (only when not typing in an input; Task 7 guards this).
 		if !m.editing && (msg.String() == "q" || msg.String() == "ctrl+c") {
 			return m, tea.Quit
@@ -147,15 +147,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) View() string {
+func (m Model) View() tea.View {
+	var content string
 	switch m.screen {
 	case screenProjects:
-		return m.viewProjects()
+		content = m.viewProjects()
 	case screenSummary:
-		return m.viewSummary()
+		content = m.viewSummary()
 	default:
-		return m.viewTasks()
+		content = m.viewTasks()
 	}
+	v := tea.NewView(content)
+	// v2 replaces the tea.WithAltScreen program option with a per-view field.
+	v.AltScreen = true
+	return v
 }
 
 func (m *Model) setStatus(err error) {
