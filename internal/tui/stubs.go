@@ -7,10 +7,8 @@ import (
 )
 
 // Temporary stubs — replaced by Tasks 8–10. Delete each as its task lands.
-func (m Model) updateProjects(msg tea.KeyMsg) (tea.Model, tea.Cmd) { return m, nil }
-func (m Model) updateSummary(msg tea.KeyMsg) (tea.Model, tea.Cmd)  { return m, nil }
-func (m Model) viewProjects() string                               { return "projects" }
-func (m Model) viewSummary() string                                { return "summary" }
+func (m Model) updateSummary(msg tea.KeyMsg) (tea.Model, tea.Cmd) { return m, nil }
+func (m Model) viewSummary() string                               { return "summary" }
 
 // loadSummary is called by tasks.go's 's' key handler (Task 7's brief), but is
 // formally introduced by Task 10 alongside summary.go. Implemented here ahead
