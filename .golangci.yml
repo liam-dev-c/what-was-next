@@ -1,0 +1,21 @@
+version: "2"
+
+linters:
+  settings:
+    errcheck:
+      # Deferred cleanup calls whose error is not actionable. Rows.Close is
+      # covered by the rows.Err() check after each iteration; Tx.Rollback after
+      # a Commit returns sql.ErrTxDone; DB.Close on an Open error path is less
+      # informative than the original error being returned.
+      exclude-functions:
+        - (*database/sql.Rows).Close
+        - (*database/sql.Tx).Rollback
+        - (*database/sql.DB).Close
+        - (*github.com/liam-dev-c/what-was-next/internal/store.Store).Close
+  exclusions:
+    rules:
+      # Test setup calls (CreateTask, Exec, Scan, Close, reload…) intentionally
+      # ignore errors; a genuine failure surfaces as a later assertion failure.
+      - path: _test\.go
+        linters:
+          - errcheck
