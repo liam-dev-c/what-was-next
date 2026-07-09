@@ -30,3 +30,17 @@ func TestOpenAndClose(t *testing.T) {
 		t.Errorf("Close: %v", err)
 	}
 }
+
+func TestOpenSeedsDefaultProject(t *testing.T) {
+	s := newTestStore(t)
+	projects, err := s.ListProjects()
+	if err != nil {
+		t.Fatalf("ListProjects: %v", err)
+	}
+	if len(projects) != 1 {
+		t.Fatalf("want 1 project after Open, got %d", len(projects))
+	}
+	if projects[0].Name != "Inbox" {
+		t.Errorf("want project 'Inbox', got %q", projects[0].Name)
+	}
+}
