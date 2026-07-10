@@ -1,6 +1,9 @@
 package store
 
-import "testing"
+import (
+	"errors"
+	"testing"
+)
 
 func projectID(t *testing.T, s *Store) int64 {
 	t.Helper()
@@ -79,6 +82,32 @@ func TestDeleteTask(t *testing.T) {
 	tasks, _ := s.ListTasks(pid)
 	if len(tasks) != 0 {
 		t.Fatalf("want 0 tasks, got %d", len(tasks))
+	}
+}
+
+func TestUpdateTaskNotFound(t *testing.T) {
+	s := newTestStore(t)
+	err := s.UpdateTask(99999, "New", "notes")
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("UpdateTask on missing id: got %v, want ErrNotFound", err)
+	}
+}
+
+func TestSetTaskDoneNotFound(t *testing.T) {
+	s := newTestStore(t)
+	if err := s.SetTaskDone(99999, true); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("SetTaskDone(true) on missing id: got %v, want ErrNotFound", err)
+	}
+	if err := s.SetTaskDone(99999, false); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("SetTaskDone(false) on missing id: got %v, want ErrNotFound", err)
+	}
+}
+
+func TestDeleteTaskNotFound(t *testing.T) {
+	s := newTestStore(t)
+	err := s.DeleteTask(99999)
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("DeleteTask on missing id: got %v, want ErrNotFound", err)
 	}
 }
 

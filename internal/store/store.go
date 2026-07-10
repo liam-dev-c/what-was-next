@@ -4,11 +4,15 @@ package store
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
 	_ "modernc.org/sqlite"
 )
+
+// ErrNotFound is returned by mutating operations when no row matches the given id.
+var ErrNotFound = errors.New("not found")
 
 type Project struct {
 	ID        int64
@@ -83,6 +87,10 @@ func Open(path string) (*Store, error) {
 	if _, err := db.Exec("PRAGMA journal_mode = WAL;"); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("enable WAL: %w", err)
+	}
+	if _, err := db.Exec("PRAGMA busy_timeout = 5000;"); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("set busy timeout: %w", err)
 	}
 	if _, err := db.Exec(schema); err != nil {
 		db.Close()

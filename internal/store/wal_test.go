@@ -21,3 +21,19 @@ func TestOpenEnablesWAL(t *testing.T) {
 		t.Fatalf("journal_mode = %q, want \"wal\"", mode)
 	}
 }
+
+func TestOpenSetsBusyTimeout(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "busy.db")
+	s, err := Open(path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer s.Close()
+	var ms int
+	if err := s.db.QueryRow(`PRAGMA busy_timeout`).Scan(&ms); err != nil {
+		t.Fatalf("query busy_timeout: %v", err)
+	}
+	if ms != 5000 {
+		t.Fatalf("busy_timeout = %d, want 5000", ms)
+	}
+}
