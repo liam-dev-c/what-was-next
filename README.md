@@ -54,3 +54,32 @@ Summary screen:
 | `p` | projects |
 | `,` | settings |
 | `q` | quit |
+
+## Claude / MCP
+
+what-was-next ships an MCP server so Claude can manage your projects and tasks.
+
+Register it with Claude Code (one time):
+
+```bash
+what-was-next mcp install
+```
+
+This runs `claude mcp add` under the hood. Pass `--scope project` or
+`--scope local` to change where it's registered (default `user`). If the
+`claude` CLI isn't installed, the command prints the equivalent registration
+command to run manually. Restart Claude Code afterward.
+
+The server exposes these tools:
+
+- Projects: `list_projects`, `create_project`, `rename_project`, `delete_project`
+- Tasks: `list_tasks`, `create_task`, `update_task`, `set_task_done`,
+  `move_task`, `delete_task`
+
+`delete_project` also deletes that project's tasks.
+
+**Note:** if the what-was-next TUI is already running when Claude changes your
+data, the TUI won't update live — it re-reads on the next navigation or
+keypress.
+
+To run the server directly (Claude Code does this for you): `what-was-next mcp`.
