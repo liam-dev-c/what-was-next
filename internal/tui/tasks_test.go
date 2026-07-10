@@ -55,11 +55,12 @@ func TestDeleteTask(t *testing.T) {
 	}
 }
 
-func TestSwitchToProjectsAndSummary(t *testing.T) {
+func TestSwitchToProjectsFocusAndSummary(t *testing.T) {
 	m := newModel(t)
+	m.screen = screenTasks
 	mi, _ := m.updateTasks(key('p'))
 	if mi.(Model).focus != focusProjects {
-		t.Fatal("want focusProjects after 'p'")
+		t.Fatal("want projects focused after 'p'")
 	}
 	mi, _ = m.updateTasks(key('s'))
 	if mi.(Model).screen != screenSummary {

@@ -11,10 +11,69 @@ import (
 )
 
 func (m Model) updateTasks(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	if m.notesEditing {
+		return m.updateNotes(msg) // added in Task 6
+	}
 	if m.editing {
-		return m.updateTaskInput(msg)
+		return m.updateInput(msg)
 	}
 	m.status = ""
+	switch msg.String() {
+	case "tab":
+		m.toggleFocus()
+		return m, nil
+	case "shift+tab":
+		m.toggleFocus()
+		return m, nil
+	case "s":
+		m.summaryPeriod = periodDay
+		m.loadSummary()
+		m.screen = screenSummary
+		return m, nil
+	case ",":
+		m.screen = screenSettings
+		return m, nil
+	}
+	if m.focus == focusProjects {
+		return m.updateProjectsPanel(msg)
+	}
+	return m.updateTasksPanel(msg)
+}
+
+func (m *Model) toggleFocus() {
+	if m.focus == focusTasks {
+		m.focus = focusProjects
+		m.projCursor = m.active
+	} else {
+		m.focus = focusTasks
+	}
+}
+
+// updateProjectsPanel handles keys when the Projects panel is focused.
+func (m Model) updateProjectsPanel(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "j", "down":
+		if m.projCursor < len(m.projects)-1 {
+			m.projCursor++
+		}
+	case "k", "up":
+		if m.projCursor > 0 {
+			m.projCursor--
+		}
+	case "enter", "space":
+		m.active = m.projCursor
+		m.cursor = 0
+		m.setStatus(m.reloadTasks())
+		m.focus = focusTasks
+	case "a":
+		m.beginInput(0, "", true)
+		return m, textinput.Blink
+	}
+	return m, nil
+}
+
+// updateTasksPanel handles keys when the Tasks panel is focused.
+func (m Model) updateTasksPanel(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "j", "down":
 		if m.cursor < len(m.tasks)-1 {
@@ -25,13 +84,15 @@ func (m Model) updateTasks(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.cursor--
 		}
 	case "a":
-		m.beginEdit(0, "")
+		m.beginInput(0, "", false)
 		return m, textinput.Blink
 	case "e":
 		if t, ok := m.selectedTask(); ok {
-			m.beginEdit(t.ID, t.Title)
+			m.beginInput(t.ID, t.Title, false)
 			return m, textinput.Blink
 		}
+	case "n":
+		return m.beginNotes() // added in Task 6
 	case "enter", "space":
 		if t, ok := m.selectedTask(); ok {
 			m.setStatus(m.store.SetTaskDone(t.ID, !t.Done))
@@ -63,14 +124,8 @@ func (m Model) updateTasks(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.toggleTimer(t.ID)
 		}
 	case "p":
-		m.projCursor = m.active
 		m.focus = focusProjects
-	case "s":
-		m.summaryPeriod = periodDay
-		m.loadSummary()
-		m.screen = screenSummary
-	case ",":
-		m.screen = screenSettings
+		m.projCursor = m.active
 	}
 	return m, nil
 }
@@ -89,7 +144,7 @@ func (m *Model) toggleTimer(taskID int64) {
 	m.setStatus(err)
 }
 
-func (m *Model) beginEdit(id int64, initial string) {
+func (m *Model) beginInput(id int64, initial string, project bool) {
 	ti := textinput.New()
 	ti.SetValue(initial)
 	ti.Focus()
@@ -97,30 +152,49 @@ func (m *Model) beginEdit(id int64, initial string) {
 	m.input = ti
 	m.editing = true
 	m.editID = id
+	m.addingProject = project
 }
 
-func (m Model) updateTaskInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (m Model) updateInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.Code {
 	case tea.KeyEnter:
-		title := strings.TrimSpace(m.input.Value())
-		if title != "" {
-			if m.editID == 0 {
-				_, err := m.store.CreateTask(m.activeProject().ID, title)
+		val := strings.TrimSpace(m.input.Value())
+		if val != "" {
+			if m.addingProject {
+				_, err := m.store.CreateProject(val)
 				m.setStatus(err)
+				m.setStatus(m.reloadProjects())
+			} else if m.editID == 0 {
+				_, err := m.store.CreateTask(m.activeProject().ID, val)
+				m.setStatus(err)
+				m.setStatus(m.reloadTasks())
 			} else {
-				m.setStatus(m.store.UpdateTask(m.editID, title, ""))
+				m.setStatus(m.store.UpdateTask(m.editID, val, m.notesOf(m.editID)))
+				m.setStatus(m.reloadTasks())
 			}
-			m.setStatus(m.reloadTasks())
 		}
 		m.editing = false
+		m.addingProject = false
 		return m, nil
 	case tea.KeyEscape:
 		m.editing = false
+		m.addingProject = false
 		return m, nil
 	}
 	var cmd tea.Cmd
 	m.input, cmd = m.input.Update(msg)
 	return m, cmd
+}
+
+// notesOf returns the current notes for a task id (preserved when editing the
+// title so UpdateTask does not clobber them).
+func (m Model) notesOf(id int64) string {
+	for _, t := range m.tasks {
+		if t.ID == id {
+			return t.Notes
+		}
+	}
+	return ""
 }
 
 func (m Model) selectedTask() (task, bool) {
@@ -252,3 +326,10 @@ func fmtDuration(d time.Duration) string {
 	}
 	return fmt.Sprintf("%dm%02ds", mnt, s)
 }
+
+// Notes editing is implemented in Task 6; stubs keep the package compiling.
+func (m Model) updateNotes(tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	m.notesEditing = false
+	return m, nil
+}
+func (m Model) beginNotes() (tea.Model, tea.Cmd) { return m, nil }
