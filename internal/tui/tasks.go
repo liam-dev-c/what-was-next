@@ -66,6 +66,9 @@ func (m Model) updateProjectsPanel(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.cursor = 0
 		m.setStatus(m.reloadTasks())
 		m.focus = focusTasks
+		if m.width > 0 {
+			m.syncTaskScroll()
+		}
 	case "a":
 		m.beginInput(0, "", true)
 		return m, textinput.Blink
@@ -128,7 +131,24 @@ func (m Model) updateTasksPanel(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.focus = focusProjects
 		m.projCursor = m.active
 	}
+	m.syncTaskScroll()
 	return m, nil
+}
+
+// syncTaskScroll refreshes the task viewport content and scrolls so the
+// selected row (m.cursor) stays within the visible window.
+func (m *Model) syncTaskScroll() {
+	m.taskVP.SetContent(m.taskListBody())
+	h := m.taskVP.Height()
+	if h < 1 {
+		return
+	}
+	top := m.taskVP.YOffset()
+	if m.cursor < top {
+		m.taskVP.SetYOffset(m.cursor)
+	} else if m.cursor >= top+h {
+		m.taskVP.SetYOffset(m.cursor - h + 1)
+	}
 }
 
 func (m *Model) toggleTimer(taskID int64) {
@@ -223,10 +243,8 @@ func (m Model) viewWorkspace() string {
 	rightW := m.width - projectsPanelWidth
 	tasksPanelH := m.height - detailPanelHeight - 1
 
-	// Tasks panel (scrolling viewport).
-	tvp := m.taskVP
-	tvp.SetContent(m.taskListBody())
-	tasksPanel := panel("Tasks · "+m.activeProject().Name, tvp.View(),
+	// Tasks panel (scrolling viewport; content synced by syncTaskScroll).
+	tasksPanel := panel("Tasks · "+m.activeProject().Name, m.taskVP.View(),
 		m.focus == focusTasks, rightW, tasksPanelH)
 
 	// Details panel (scrolling viewport or notes editor).

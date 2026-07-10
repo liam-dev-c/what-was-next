@@ -66,3 +66,22 @@ func TestViewTasksNarrowFallsBack(t *testing.T) {
 		t.Fatalf("narrow view width %d exceeds 50", w)
 	}
 }
+
+func TestTaskScrollFollowsCursor(t *testing.T) {
+	m := newModel(t)
+	m.screen = screenTasks
+	mi, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 16})
+	m = mi.(Model)
+	for i := 0; i < 30; i++ {
+		m.store.CreateTask(m.activeProject().ID, "Task "+string(rune('a'+i%26)))
+	}
+	m.reloadTasks()
+	// Move cursor to the bottom.
+	for i := 0; i < 29; i++ {
+		mi, _ = m.updateTasks(key('j'))
+		m = mi.(Model)
+	}
+	if m.taskVP.YOffset() == 0 {
+		t.Fatal("want task viewport scrolled to keep cursor visible")
+	}
+}
