@@ -60,9 +60,11 @@ func panel(title, body string, focused bool, width, height int) string {
 	if focused {
 		style = borderFocusStyle
 	}
-	inner := width - 2   // left+right border
-	rows := height - 2   // top+bottom border
 	head := panelTitleStyle.Render(title)
 	content := head + "\n" + body
-	return style.Width(inner).Height(rows).Render(content)
+	// Lipgloss v2 Width/Height are border-inclusive, so pass the full cell
+	// dimensions here (not width-2/height-2). This makes every panel exactly
+	// width×height whether its content fills the box or is padded — which keeps
+	// the left sidebar the same height as the stacked right column.
+	return style.Width(width).Height(height).Render(content)
 }

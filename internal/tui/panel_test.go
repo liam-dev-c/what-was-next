@@ -8,6 +8,34 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
+func TestPanelExactSizeWhenPadded(t *testing.T) {
+	// A panel with short content must still render to its full requested size
+	// (lipgloss v2 sizing is border-inclusive). This guards panel alignment.
+	out := panel("T", "one line", false, 24, 12)
+	if h := lipgloss.Height(out); h != 12 {
+		t.Fatalf("padded panel height = %d, want 12", h)
+	}
+	if w := lipgloss.Width(out); w != 24 {
+		t.Fatalf("padded panel width = %d, want 24", w)
+	}
+}
+
+func TestWorkspacePanelsAligned(t *testing.T) {
+	m := newModel(t)
+	m.screen = screenTasks
+	m.store.CreateProject("Personal") // short projects list → padded left panel
+	m.reloadProjects()
+	m.store.CreateTask(m.activeProject().ID, "Ship it")
+	m.reloadTasks()
+	mi, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	m = mi.(Model)
+	tasksH, detailH := m.rightColumnHeights()
+	left := panel("Projects", m.projectsBody(), false, projectsPanelWidth, tasksH+detailH)
+	if lipgloss.Height(left) != tasksH+detailH {
+		t.Fatalf("left panel height = %d, want %d (== right column)", lipgloss.Height(left), tasksH+detailH)
+	}
+}
+
 func TestPanelRendersTitleWithinWidth(t *testing.T) {
 	out := panel("Projects", "Work\nPersonal", true, 20, 6)
 	if !strings.Contains(out, "Projects") {
