@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"time"
 
+	"charm.land/bubbles/v2/textarea"
 	"charm.land/bubbles/v2/textinput"
+	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"github.com/liam-dev-c/what-was-next/internal/store"
 )
@@ -28,6 +30,15 @@ const (
 	periodWeek
 )
 
+// focusArea selects which panel receives list navigation keys on the tasks
+// workspace.
+type focusArea int
+
+const (
+	focusTasks focusArea = iota
+	focusProjects
+)
+
 // Model is the root Bubble Tea model. Screen-specific state is added by the
 // task/project/timer/summary tasks; Update/View dispatch on m.screen.
 type Model struct {
@@ -44,6 +55,14 @@ type Model struct {
 	editing bool
 	editID  int64 // 0 == adding a new task
 	input   textinput.Model
+
+	// panel workspace state
+	focus         focusArea
+	addingProject bool // input is naming a new project, not a task
+	notesEditing  bool
+	notesArea     textarea.Model
+	taskVP        viewport.Model
+	detailVP      viewport.Model
 
 	// project switcher cursor — populated in Task 8
 	projCursor int
@@ -79,6 +98,9 @@ func New(s *store.Store) (Model, error) {
 	m.weekStart = weekStart
 	// Summary is the landing screen; prime its daily snapshot.
 	m.loadSummary()
+	m.taskVP = viewport.New()
+	m.detailVP = viewport.New()
+	m.notesArea = textarea.New()
 	return m, nil
 }
 
@@ -117,6 +139,36 @@ func (m Model) activeProject() store.Project {
 	return m.projects[m.active]
 }
 
+// resizePanels lays out the three panels from the current terminal size.
+// Left: Projects (fixed). Right column: Tasks over Details, each a bordered
+// panel whose inner viewport is (panel - 2 border - 1 title) tall.
+func (m *Model) resizePanels() {
+	rightW := m.width - projectsPanelWidth
+	if rightW < 1 {
+		rightW = 1
+	}
+	innerW := rightW - 2 // borders
+	if innerW < 1 {
+		innerW = 1
+	}
+	detailInner := detailPanelHeight - 2 - 1 // borders + title
+	if detailInner < 1 {
+		detailInner = 1
+	}
+	// Tasks panel gets the remaining height; reserve 1 row for the help line.
+	tasksPanelH := m.height - detailPanelHeight - 1
+	taskInner := tasksPanelH - 2 - 1
+	if taskInner < 1 {
+		taskInner = 1
+	}
+	m.taskVP.SetWidth(innerW)
+	m.taskVP.SetHeight(taskInner)
+	m.detailVP.SetWidth(innerW)
+	m.detailVP.SetHeight(detailInner)
+	m.notesArea.SetWidth(innerW)
+	m.notesArea.SetHeight(detailInner)
+}
+
 type tickMsg struct{}
 
 func tickCmd() tea.Cmd {
@@ -150,6 +202,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tickCmd()
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
+		m.resizePanels()
 		return m, nil
 	case tea.KeyPressMsg:
 		// Global quit (only when not typing in an input; Task 7 guards this).

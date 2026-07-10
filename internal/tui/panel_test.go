@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"charm.land/lipgloss/v2"
+	tea "charm.land/bubbletea/v2"
 )
 
 func TestPanelRendersTitleWithinWidth(t *testing.T) {
@@ -23,5 +24,21 @@ func TestPanelRendersTitleWithinWidth(t *testing.T) {
 func TestPanelFocusChangesBorderColor(t *testing.T) {
 	if panel("T", "b", true, 12, 4) == panel("T", "b", false, 12, 4) {
 		t.Fatal("focused and unfocused panels should differ")
+	}
+}
+
+func TestWindowSizeSizesViewports(t *testing.T) {
+	m := newModel(t)
+	mi, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	m = mi.(Model)
+	if m.taskVP.Width() <= 0 || m.taskVP.Height() <= 0 {
+		t.Fatalf("task viewport not sized: %dx%d", m.taskVP.Width(), m.taskVP.Height())
+	}
+	if m.detailVP.Width() <= 0 || m.detailVP.Height() <= 0 {
+		t.Fatalf("detail viewport not sized: %dx%d", m.detailVP.Width(), m.detailVP.Height())
+	}
+	// Right column width = total - projects panel.
+	if m.taskVP.Width() > 120-projectsPanelWidth {
+		t.Fatalf("task viewport too wide: %d", m.taskVP.Width())
 	}
 }
