@@ -2,29 +2,69 @@ package tui
 
 import "charm.land/lipgloss/v2"
 
+// Soft truecolor palette tuned for a dark background (dark-mode Ghostty).
+var (
+	accentColor  = lipgloss.Color("#C8A2FF") // lavender: titles, selection, focus
+	dimColor     = lipgloss.Color("#9BA3B4") // light slate: secondary text
+	borderColor  = lipgloss.Color("#4A4E5A") // muted grey: unfocused panel frame
+	errorColor   = lipgloss.Color("#F2A0A0") // rose: errors/status
+	successColor = lipgloss.Color("#A7E0B8") // mint: done / running timer
+	faintColor   = lipgloss.Color("#6B7280") // slate: hints/labels
+)
+
+const (
+	projectsPanelWidth = 24 // total cells incl. borders
+	minWorkspaceWidth  = 80 // below this, fall back to single column
+	detailPanelHeight  = 9  // total rows incl. borders for the Details panel
+)
+
 var (
 	titleStyle = lipgloss.NewStyle().
 			Bold(true).
-			Foreground(lipgloss.Color("212")).
+			Foreground(accentColor).
 			MarginBottom(1)
 
 	selectedStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("212")).
+			Foreground(accentColor).
 			Bold(true)
 
 	doneStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("240")).
+			Foreground(faintColor).
 			Strikethrough(true)
 
 	statusStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("203"))
+			Foreground(errorColor)
 
 	helpStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("240")).
+			Foreground(faintColor).
 			MarginTop(1)
 
-	// faintStyle is helpStyle without the top margin, for dim text used inline
-	// (e.g. the day/week tab selector) rather than as a trailing block.
 	faintStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("240"))
+			Foreground(faintColor)
+
+	panelTitleStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(accentColor)
+
+	borderStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(borderColor)
+
+	borderFocusStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(accentColor)
 )
+
+// panel renders body inside a rounded border sized to width×height cells,
+// with title as a styled header line. Border is accent-coloured when focused.
+func panel(title, body string, focused bool, width, height int) string {
+	style := borderStyle
+	if focused {
+		style = borderFocusStyle
+	}
+	inner := width - 2   // left+right border
+	rows := height - 2   // top+bottom border
+	head := panelTitleStyle.Render(title)
+	content := head + "\n" + body
+	return style.Width(inner).Height(rows).Render(content)
+}
