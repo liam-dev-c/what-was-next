@@ -17,6 +17,15 @@ const (
 	screenTasks screen = iota
 	screenProjects
 	screenSummary
+	screenSettings
+)
+
+// period selects which window the summary screen shows.
+type period int
+
+const (
+	periodDay period = iota
+	periodWeek
 )
 
 // Model is the root Bubble Tea model. Screen-specific state is added by the
@@ -39,8 +48,13 @@ type Model struct {
 	// project switcher cursor — populated in Task 8
 	projCursor int
 
-	// summary snapshot — populated in Task 10
-	summary store.DailySummary
+	// summary snapshots — populated in Task 10; week/period added later
+	summary       store.DailySummary
+	week          store.WeekSummary
+	summaryPeriod period
+
+	// settings — first day of the week, editable on the settings screen
+	weekStart time.Weekday
 
 	width  int
 	height int
@@ -51,13 +65,20 @@ type Model struct {
 type storeTask = store.Task
 
 func New(s *store.Store) (Model, error) {
-	m := Model{store: s, screen: screenTasks}
+	m := Model{store: s, screen: screenSummary}
 	if err := m.reloadProjects(); err != nil {
 		return Model{}, err
 	}
 	if err := m.reloadTasks(); err != nil {
 		return Model{}, err
 	}
+	weekStart, err := s.WeekStart()
+	if err != nil {
+		return Model{}, fmt.Errorf("load settings: %w", err)
+	}
+	m.weekStart = weekStart
+	// Summary is the landing screen; prime its daily snapshot.
+	m.loadSummary()
 	return m, nil
 }
 
@@ -142,6 +163,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateProjects(msg)
 		case screenSummary:
 			return m.updateSummary(msg)
+		case screenSettings:
+			return m.updateSettings(msg)
 		}
 	}
 	return m, nil
@@ -154,6 +177,8 @@ func (m Model) View() tea.View {
 		content = m.viewProjects()
 	case screenSummary:
 		content = m.viewSummary()
+	case screenSettings:
+		content = m.viewSettings()
 	default:
 		content = m.viewTasks()
 	}

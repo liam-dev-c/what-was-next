@@ -65,8 +65,11 @@ func (m Model) updateTasks(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.projCursor = m.active
 		m.screen = screenProjects
 	case "s":
+		m.summaryPeriod = periodDay
 		m.loadSummary()
 		m.screen = screenSummary
+	case ",":
+		m.screen = screenSettings
 	}
 	return m, nil
 }
@@ -176,7 +179,7 @@ func (m Model) viewTasks() string {
 		b.WriteString("\n" + statusStyle.Render(m.status))
 	}
 	b.WriteString(helpStyle.Render(
-		"\na add · e edit · enter done · d del · J/K move · t timer · p projects · s summary · q quit"))
+		"\na add · e edit · enter done · d del · J/K move · t timer · p projects · s summary · , settings · q quit"))
 	return b.String()
 }
 

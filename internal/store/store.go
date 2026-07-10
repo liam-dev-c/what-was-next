@@ -62,6 +62,10 @@ CREATE TABLE IF NOT EXISTS time_entries (
 	started_at TIMESTAMP NOT NULL,
 	ended_at   TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS settings (
+	key   TEXT PRIMARY KEY,
+	value TEXT NOT NULL
+);
 `
 
 // Open opens (creating if needed) the SQLite DB at path, runs migrations,

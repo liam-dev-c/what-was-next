@@ -10,6 +10,7 @@ func key(r rune) tea.KeyPressMsg { return tea.KeyPressMsg{Code: r, Text: string(
 
 func TestAddTaskFlow(t *testing.T) {
 	m := newModel(t)
+	m.screen = screenTasks // summary is the landing screen; this flow lives on tasks
 	// Press 'a' to start adding.
 	mi, _ := m.updateTasks(key('a'))
 	m = mi.(Model)
