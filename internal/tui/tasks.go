@@ -26,10 +26,10 @@ func (m Model) updateTasks(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "shift+tab":
 		m.toggleFocus()
 		return m, nil
-	case "s":
+	case "h":
 		m.summaryPeriod = periodDay
 		m.loadSummary()
-		m.screen = screenSummary
+		m.screen = screenHistory
 		return m, nil
 	case ",":
 		m.screen = screenSettings
@@ -275,7 +275,7 @@ func (m Model) tasksHelp() string {
 	if m.notesEditing {
 		return "editing notes · ctrl+s save · esc cancel"
 	}
-	return "tab focus · j/k move · a add · e edit · n notes · t timer · s summary · , settings · q"
+	return "tab focus · j/k move · a add · e edit · n notes · t timer · h history · , settings · q"
 }
 
 // taskListBody renders the task rows for the active project.

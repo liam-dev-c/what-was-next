@@ -35,7 +35,7 @@ func (m Model) updateSummary(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "w":
 		m.summaryPeriod = periodWeek
 		m.loadWeek()
-	case "t", "esc":
+	case "esc":
 		m.screen = screenTasks
 	case ",":
 		m.screen = screenSettings
@@ -116,7 +116,7 @@ func (m Model) viewWeek() string {
 	return b.String()
 }
 
-const summaryHelp = "\nd day · w week · t tasks · p projects · , settings · q quit"
+const summaryHelp = "\nd day · w week · esc back · , settings · q quit"
 
 // periodTabs renders the day/week selector, highlighting the active period.
 func periodTabs(active period) string {

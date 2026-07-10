@@ -29,11 +29,11 @@ func TestSettingsTogglePersistsWeekStart(t *testing.T) {
 	}
 }
 
-func TestSettingsEscReturnsToSummary(t *testing.T) {
+func TestSettingsEscReturnsToHistory(t *testing.T) {
 	m := newModel(t)
 	m.screen = screenSettings
 	mi, _ := m.updateSettings(tea.KeyPressMsg{Code: tea.KeyEscape})
-	if mi.(Model).screen != screenSummary {
-		t.Fatal("want return to summary on esc")
+	if mi.(Model).screen != screenHistory {
+		t.Fatal("want return to history on esc")
 	}
 }

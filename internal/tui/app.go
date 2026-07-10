@@ -17,7 +17,7 @@ type screen int
 
 const (
 	screenTasks screen = iota
-	screenSummary
+	screenHistory
 	screenSettings
 )
 
@@ -83,7 +83,7 @@ type Model struct {
 type storeTask = store.Task
 
 func New(s *store.Store) (Model, error) {
-	m := Model{store: s, screen: screenSummary}
+	m := Model{store: s, screen: screenTasks}
 	if err := m.reloadProjects(); err != nil {
 		return Model{}, err
 	}
@@ -95,7 +95,8 @@ func New(s *store.Store) (Model, error) {
 		return Model{}, fmt.Errorf("load settings: %w", err)
 	}
 	m.weekStart = weekStart
-	// Summary is the landing screen; prime its daily snapshot.
+	// Tasks is the landing screen; prime the daily snapshot so History (opened
+	// via 'h') shows Today's data immediately.
 	m.loadSummary()
 	m.taskVP = viewport.New()
 	m.detailVP = viewport.New()
@@ -229,7 +230,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch m.screen {
 		case screenTasks:
 			return m.updateTasks(msg)
-		case screenSummary:
+		case screenHistory:
 			return m.updateSummary(msg)
 		case screenSettings:
 			return m.updateSettings(msg)
@@ -241,7 +242,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() tea.View {
 	var content string
 	switch m.screen {
-	case screenSummary:
+	case screenHistory:
 		content = m.viewSummary()
 	case screenSettings:
 		content = m.viewSettings()

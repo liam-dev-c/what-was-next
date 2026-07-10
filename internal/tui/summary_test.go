@@ -22,26 +22,33 @@ func TestSummaryLoadsAndRenders(t *testing.T) {
 
 func TestSummaryEscReturns(t *testing.T) {
 	m := newModel(t)
-	m.screen = screenSummary
+	m.screen = screenHistory
 	mi, _ := m.updateSummary(tea.KeyPressMsg{Code: tea.KeyEscape})
 	if mi.(Model).screen != screenTasks {
 		t.Fatal("want return to tasks on esc")
 	}
 }
 
-func TestSummaryIsDefaultScreen(t *testing.T) {
+// TestHistoryShowsDailySnapshotByDefault replaces the former
+// TestSummaryIsDefaultScreen: tasks is now the landing screen (see
+// TestNewSelectsDefaultProject in app_test.go), so this test instead checks
+// that opening History via 'h' lands on the daily snapshot.
+func TestHistoryShowsDailySnapshotByDefault(t *testing.T) {
 	m := newModel(t)
-	if m.screen != screenSummary {
-		t.Fatalf("want summary as landing screen, got %v", m.screen)
+	m.screen = screenTasks
+	mi, _ := m.updateTasks(key('h'))
+	m = mi.(Model)
+	if m.screen != screenHistory {
+		t.Fatalf("want screenHistory after 'h', got %v", m.screen)
 	}
 	if !strings.Contains(m.viewSummary(), "Today") {
-		t.Fatalf("landing view should be the daily summary:\n%s", m.viewSummary())
+		t.Fatalf("history should default to the daily snapshot:\n%s", m.viewSummary())
 	}
 }
 
 func TestSummaryDayWeekToggle(t *testing.T) {
 	m := newModel(t)
-	m.screen = screenSummary
+	m.screen = screenHistory
 
 	mi, _ := m.updateSummary(tea.KeyPressMsg{Code: 'w', Text: "w"})
 	m = mi.(Model)

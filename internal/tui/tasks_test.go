@@ -10,7 +10,7 @@ func key(r rune) tea.KeyPressMsg { return tea.KeyPressMsg{Code: r, Text: string(
 
 func TestAddTaskFlow(t *testing.T) {
 	m := newModel(t)
-	m.screen = screenTasks // summary is the landing screen; this flow lives on tasks
+	m.screen = screenTasks // tasks is the landing screen; this flow lives on tasks
 	// Press 'a' to start adding.
 	mi, _ := m.updateTasks(key('a'))
 	m = mi.(Model)
@@ -55,16 +55,25 @@ func TestDeleteTask(t *testing.T) {
 	}
 }
 
-func TestSwitchToProjectsFocusAndSummary(t *testing.T) {
+func TestSwitchToProjectsFocusAndHistory(t *testing.T) {
 	m := newModel(t)
 	m.screen = screenTasks
 	mi, _ := m.updateTasks(key('p'))
 	if mi.(Model).focus != focusProjects {
 		t.Fatal("want projects focused after 'p'")
 	}
-	mi, _ = m.updateTasks(key('s'))
-	if mi.(Model).screen != screenSummary {
-		t.Fatal("want screenSummary after 's'")
+	mi, _ = m.updateTasks(key('h'))
+	if mi.(Model).screen != screenHistory {
+		t.Fatal("want screenHistory after 'h'")
+	}
+}
+
+func TestHistoryKeyOpensHistory(t *testing.T) {
+	m := newModel(t)
+	m.screen = screenTasks
+	mi, _ := m.updateTasks(key('h'))
+	if mi.(Model).screen != screenHistory {
+		t.Fatal("want screenHistory after 'h'")
 	}
 }
 
