@@ -68,6 +68,3 @@ func addProjectTools(srv *mcp.Server, s *store.Store) {
 		return textResult(fmt.Sprintf("deleted project %d", args.ID))
 	})
 }
-
-// TEMP stub — replaced by tasks.go in Task 3.
-func addTaskTools(srv *mcp.Server, s *store.Store) {}
