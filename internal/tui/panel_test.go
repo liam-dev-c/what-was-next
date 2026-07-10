@@ -100,6 +100,23 @@ func TestNarrowRendersNotesEditor(t *testing.T) {
 	}
 }
 
+func TestRightColumnDetailsLargerThanTasks(t *testing.T) {
+	m := newModel(t)
+	mi, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	m = mi.(Model)
+	tasksH, detailH := m.rightColumnHeights()
+	if detailH <= tasksH {
+		t.Fatalf("want Details taller than Tasks, got tasks=%d detail=%d", tasksH, detailH)
+	}
+	if tasksH+detailH > 40-1 {
+		t.Fatalf("panels overflow height: tasks=%d detail=%d", tasksH, detailH)
+	}
+	// Detail viewport should be sized from detailH, not the old fixed 9.
+	if m.detailVP.Height() <= 3 {
+		t.Fatalf("detail viewport too small: %d", m.detailVP.Height())
+	}
+}
+
 func TestTaskScrollFollowsCursor(t *testing.T) {
 	m := newModel(t)
 	m.screen = screenTasks

@@ -241,7 +241,7 @@ func (m Model) viewWorkspace() string {
 		projectsPanelWidth, m.height-1)
 
 	rightW := m.width - projectsPanelWidth
-	tasksPanelH := m.height - detailPanelHeight - 1
+	tasksPanelH, detailPanelH := m.rightColumnHeights()
 
 	// Tasks panel: render from a fresh-content copy of the viewport so the
 	// list (and any live elapsed times) refreshes every render, not just on
@@ -263,7 +263,7 @@ func (m Model) viewWorkspace() string {
 	} else {
 		detailContent = faintStyle.Render("No task selected.")
 	}
-	detailPanel := panel("Details", detailContent, false, rightW, detailPanelHeight)
+	detailPanel := panel("Details", detailContent, false, rightW, detailPanelH)
 
 	right := lipgloss.JoinVertical(lipgloss.Left, tasksPanel, detailPanel)
 	body := lipgloss.JoinHorizontal(lipgloss.Top, left, right)

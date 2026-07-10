@@ -138,6 +138,25 @@ func (m Model) activeProject() store.Project {
 	return m.projects[m.active]
 }
 
+// rightColumnHeights splits the right column (below the help row) into the
+// Tasks panel (~40%) over the Details panel (~60%). Single source of truth so
+// resizePanels and viewWorkspace never disagree.
+func (m Model) rightColumnHeights() (tasksH, detailH int) {
+	rightColH := m.height - 1 // reserve 1 row for the help line
+	if rightColH < 6 {
+		rightColH = 6
+	}
+	detailH = rightColH * 3 / 5
+	if detailH < 3 {
+		detailH = 3
+	}
+	tasksH = rightColH - detailH
+	if tasksH < 3 {
+		tasksH = 3
+	}
+	return tasksH, detailH
+}
+
 // resizePanels lays out the three panels from the current terminal size.
 // Left: Projects (fixed). Right column: Tasks over Details, each a bordered
 // panel whose inner viewport is (panel - 2 border - 1 title) tall.
@@ -150,15 +169,14 @@ func (m *Model) resizePanels() {
 	if innerW < 1 {
 		innerW = 1
 	}
-	detailInner := detailPanelHeight - 2 - 1 // borders + title
-	if detailInner < 1 {
-		detailInner = 1
-	}
-	// Tasks panel gets the remaining height; reserve 1 row for the help line.
-	tasksPanelH := m.height - detailPanelHeight - 1
-	taskInner := tasksPanelH - 2 - 1
+	tasksPanelH, detailPanelH := m.rightColumnHeights()
+	taskInner := tasksPanelH - 2 - 1 // borders + title
 	if taskInner < 1 {
 		taskInner = 1
+	}
+	detailInner := detailPanelH - 2 - 1
+	if detailInner < 1 {
+		detailInner = 1
 	}
 	m.taskVP.SetWidth(innerW)
 	m.taskVP.SetHeight(taskInner)

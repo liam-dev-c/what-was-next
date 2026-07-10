@@ -14,7 +14,6 @@ var (
 const (
 	projectsPanelWidth = 24 // total cells incl. borders
 	minWorkspaceWidth  = 80 // below this, fall back to single column
-	detailPanelHeight  = 9  // total rows incl. borders for the Details panel
 )
 
 var (
