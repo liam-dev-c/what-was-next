@@ -26,8 +26,8 @@ func TestNewSelectsDefaultProject(t *testing.T) {
 	if m.activeProject().Name != "Inbox" {
 		t.Fatalf("want active project 'Inbox', got %q", m.activeProject().Name)
 	}
-	if m.screen != screenSummary {
-		t.Fatalf("want initial screen screenSummary, got %v", m.screen)
+	if m.screen != screenTasks {
+		t.Fatalf("want initial screen screenTasks, got %v", m.screen)
 	}
 }
 

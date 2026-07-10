@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"time"
 
+	"charm.land/bubbles/v2/textarea"
 	"charm.land/bubbles/v2/textinput"
+	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"github.com/liam-dev-c/what-was-next/internal/store"
 )
@@ -15,8 +17,7 @@ type screen int
 
 const (
 	screenTasks screen = iota
-	screenProjects
-	screenSummary
+	screenHistory
 	screenSettings
 )
 
@@ -26,6 +27,15 @@ type period int
 const (
 	periodDay period = iota
 	periodWeek
+)
+
+// focusArea selects which panel receives list navigation keys on the tasks
+// workspace.
+type focusArea int
+
+const (
+	focusTasks focusArea = iota
+	focusProjects
 )
 
 // Model is the root Bubble Tea model. Screen-specific state is added by the
@@ -44,6 +54,14 @@ type Model struct {
 	editing bool
 	editID  int64 // 0 == adding a new task
 	input   textinput.Model
+
+	// panel workspace state
+	focus         focusArea
+	addingProject bool // input is naming a new project, not a task
+	notesEditing  bool
+	notesArea     textarea.Model
+	taskVP        viewport.Model
+	detailVP      viewport.Model
 
 	// project switcher cursor — populated in Task 8
 	projCursor int
@@ -65,7 +83,7 @@ type Model struct {
 type storeTask = store.Task
 
 func New(s *store.Store) (Model, error) {
-	m := Model{store: s, screen: screenSummary}
+	m := Model{store: s, screen: screenTasks}
 	if err := m.reloadProjects(); err != nil {
 		return Model{}, err
 	}
@@ -77,8 +95,12 @@ func New(s *store.Store) (Model, error) {
 		return Model{}, fmt.Errorf("load settings: %w", err)
 	}
 	m.weekStart = weekStart
-	// Summary is the landing screen; prime its daily snapshot.
+	// Tasks is the landing screen; prime the daily snapshot so History (opened
+	// via 'h') shows Today's data immediately.
 	m.loadSummary()
+	m.taskVP = viewport.New()
+	m.detailVP = viewport.New()
+	m.notesArea = textarea.New()
 	return m, nil
 }
 
@@ -117,6 +139,54 @@ func (m Model) activeProject() store.Project {
 	return m.projects[m.active]
 }
 
+// rightColumnHeights splits the right column (below the help row) into the
+// Tasks panel (~40%) over the Details panel (~60%). Single source of truth so
+// resizePanels and viewWorkspace never disagree.
+func (m Model) rightColumnHeights() (tasksH, detailH int) {
+	rightColH := m.height - 2 // reserve 2 rows for the help block (margin + text)
+	if rightColH < 6 {
+		rightColH = 6
+	}
+	detailH = rightColH * 3 / 5
+	if detailH < 3 {
+		detailH = 3
+	}
+	tasksH = rightColH - detailH
+	if tasksH < 3 {
+		tasksH = 3
+	}
+	return tasksH, detailH
+}
+
+// resizePanels lays out the three panels from the current terminal size.
+// Left: Projects (fixed). Right column: Tasks over Details, each a bordered
+// panel whose inner viewport is (panel - 2 border - 1 title) tall.
+func (m *Model) resizePanels() {
+	rightW := m.width - projectsPanelWidth
+	if rightW < 1 {
+		rightW = 1
+	}
+	innerW := rightW - 2 // borders
+	if innerW < 1 {
+		innerW = 1
+	}
+	tasksPanelH, detailPanelH := m.rightColumnHeights()
+	taskInner := tasksPanelH - 2 - 1 // borders + title
+	if taskInner < 1 {
+		taskInner = 1
+	}
+	detailInner := detailPanelH - 2 - 1
+	if detailInner < 1 {
+		detailInner = 1
+	}
+	m.taskVP.SetWidth(innerW)
+	m.taskVP.SetHeight(taskInner)
+	m.detailVP.SetWidth(innerW)
+	m.detailVP.SetHeight(detailInner)
+	m.notesArea.SetWidth(innerW)
+	m.notesArea.SetHeight(detailInner)
+}
+
 type tickMsg struct{}
 
 func tickCmd() tea.Cmd {
@@ -150,18 +220,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tickCmd()
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
+		m.resizePanels()
 		return m, nil
 	case tea.KeyPressMsg:
 		// Global quit (only when not typing in an input; Task 7 guards this).
-		if !m.editing && (msg.String() == "q" || msg.String() == "ctrl+c") {
+		if !m.editing && !m.notesEditing && (msg.String() == "q" || msg.String() == "ctrl+c") {
 			return m, tea.Quit
 		}
 		switch m.screen {
 		case screenTasks:
 			return m.updateTasks(msg)
-		case screenProjects:
-			return m.updateProjects(msg)
-		case screenSummary:
+		case screenHistory:
 			return m.updateSummary(msg)
 		case screenSettings:
 			return m.updateSettings(msg)
@@ -173,9 +242,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() tea.View {
 	var content string
 	switch m.screen {
-	case screenProjects:
-		content = m.viewProjects()
-	case screenSummary:
+	case screenHistory:
 		content = m.viewSummary()
 	case screenSettings:
 		content = m.viewSettings()

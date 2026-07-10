@@ -6,53 +6,57 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-func TestSelectProjectReloadsTasks(t *testing.T) {
+func TestProjectsPanelFocusAndSelect(t *testing.T) {
 	m := newModel(t)
+	m.screen = screenTasks
 	p, _ := m.store.CreateProject("Work")
 	m.store.CreateTask(p.ID, "Work task")
 	m.reloadProjects()
-	m.screen = screenProjects
-	m.projCursor = 0
 
-	// Move down to "Work" (index 1) and select it.
-	mi, _ := m.updateProjects(key('j'))
+	// Tab to focus the projects panel.
+	mi, _ := m.updateTasks(tea.KeyPressMsg{Code: tea.KeyTab})
 	m = mi.(Model)
-	mi, _ = m.updateProjects(tea.KeyPressMsg{Code: tea.KeyEnter})
-	m = mi.(Model)
-
-	if m.screen != screenTasks {
-		t.Fatal("want return to tasks after selecting project")
+	if m.focus != focusProjects {
+		t.Fatal("want projects focused after tab")
 	}
+	// Move to "Work" (index 1) and select it.
+	mi, _ = m.updateTasks(key('j'))
+	m = mi.(Model)
+	mi, _ = m.updateTasks(tea.KeyPressMsg{Code: tea.KeyEnter})
+	m = mi.(Model)
 	if m.activeProject().Name != "Work" {
 		t.Fatalf("want active 'Work', got %q", m.activeProject().Name)
 	}
+	if m.focus != focusTasks {
+		t.Fatal("want focus back on tasks after selecting a project")
+	}
 	if len(m.tasks) != 1 || m.tasks[0].Title != "Work task" {
-		t.Fatalf("want Work's tasks loaded, got %+v", m.tasks)
+		t.Fatalf("want Work's tasks, got %+v", m.tasks)
 	}
 }
 
-func TestAddProjectFlow(t *testing.T) {
+func TestAddProjectViaPanel(t *testing.T) {
 	m := newModel(t)
-	m.screen = screenProjects
-	mi, _ := m.updateProjects(key('a'))
+	m.screen = screenTasks
+	m.focus = focusProjects
+	mi, _ := m.updateTasks(key('a'))
 	m = mi.(Model)
+	if !m.editing || !m.addingProject {
+		t.Fatal("want project-add input active")
+	}
 	for _, r := range "Side" {
 		mi, _ = m.Update(key(r))
 		m = mi.(Model)
 	}
 	mi, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = mi.(Model)
-	names := make([]string, len(m.projects))
-	for i, p := range m.projects {
-		names[i] = p.Name
-	}
 	found := false
-	for _, n := range names {
-		if n == "Side" {
+	for _, p := range m.projects {
+		if p.Name == "Side" {
 			found = true
 		}
 	}
 	if !found {
-		t.Fatalf("want a 'Side' project, got %v", names)
+		t.Fatalf("want 'Side' project created")
 	}
 }
