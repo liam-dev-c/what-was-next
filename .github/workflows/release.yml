@@ -10,6 +10,8 @@ jobs:
   tag:
     name: Tag & release
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version.outputs.next }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
@@ -65,3 +67,53 @@ jobs:
           set -euo pipefail
           gh release create "$NEXT" --title "$NEXT" --generate-notes --verify-tag \
             dist/what-was-next-darwin-*
+
+  bump-formula:
+    name: Bump Homebrew formula
+    needs: tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout what-was-next (for the renderer script)
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          path: src
+
+      - name: Checkout tap
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          repository: liam-dev-c/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: tap
+
+      - name: Download release binaries
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          gh release download "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern 'what-was-next-darwin-*' --dir dist
+
+      - name: Render formula
+        env:
+          TAG: ${{ needs.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p tap/Formula
+          REPO="$GITHUB_REPOSITORY" \
+            src/scripts/render-formula.sh "$TAG" dist > tap/Formula/what-was-next.rb
+          cat tap/Formula/what-was-next.rb
+
+      - name: Commit and push
+        env:
+          TAG: ${{ needs.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/what-was-next.rb
+          git commit -m "what-was-next ${TAG}" || { echo "no changes"; exit 0; }
+          git push
