@@ -63,38 +63,66 @@ func (s *Store) ListTasks(projectID int64) ([]Task, error) {
 }
 
 func (s *Store) UpdateTask(id int64, title, notes string) error {
-	_, err := s.db.Exec(
+	res, err := s.db.Exec(
 		`UPDATE tasks SET title = ?, notes = ? WHERE id = ?`, title, notes, id,
 	)
 	if err != nil {
 		return fmt.Errorf("update task: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("update task rows: %w", err)
+	}
+	if n == 0 {
+		return ErrNotFound
 	}
 	return nil
 }
 
 func (s *Store) SetTaskDone(id int64, done bool) error {
 	if done {
-		_, err := s.db.Exec(
+		res, err := s.db.Exec(
 			`UPDATE tasks SET done = 1, done_at = ? WHERE id = ?`, s.now(), id,
 		)
 		if err != nil {
 			return fmt.Errorf("set task done: %w", err)
 		}
+		n, err := res.RowsAffected()
+		if err != nil {
+			return fmt.Errorf("set task done rows: %w", err)
+		}
+		if n == 0 {
+			return ErrNotFound
+		}
 		return nil
 	}
-	_, err := s.db.Exec(
+	res, err := s.db.Exec(
 		`UPDATE tasks SET done = 0, done_at = NULL WHERE id = ?`, id,
 	)
 	if err != nil {
 		return fmt.Errorf("set task undone: %w", err)
 	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("set task undone rows: %w", err)
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
 	return nil
 }
 
 func (s *Store) DeleteTask(id int64) error {
-	_, err := s.db.Exec(`DELETE FROM tasks WHERE id = ?`, id)
+	res, err := s.db.Exec(`DELETE FROM tasks WHERE id = ?`, id)
 	if err != nil {
 		return fmt.Errorf("delete task: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("delete task rows: %w", err)
+	}
+	if n == 0 {
+		return ErrNotFound
 	}
 	return nil
 }

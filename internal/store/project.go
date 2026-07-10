@@ -37,17 +37,31 @@ func (s *Store) ListProjects() ([]Project, error) {
 }
 
 func (s *Store) RenameProject(id int64, name string) error {
-	_, err := s.db.Exec(`UPDATE projects SET name = ? WHERE id = ?`, name, id)
+	res, err := s.db.Exec(`UPDATE projects SET name = ? WHERE id = ?`, name, id)
 	if err != nil {
 		return fmt.Errorf("rename project: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rename project rows: %w", err)
+	}
+	if n == 0 {
+		return ErrNotFound
 	}
 	return nil
 }
 
 func (s *Store) DeleteProject(id int64) error {
-	_, err := s.db.Exec(`DELETE FROM projects WHERE id = ?`, id)
+	res, err := s.db.Exec(`DELETE FROM projects WHERE id = ?`, id)
 	if err != nil {
 		return fmt.Errorf("delete project: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("delete project rows: %w", err)
+	}
+	if n == 0 {
+		return ErrNotFound
 	}
 	return nil
 }

@@ -1,6 +1,9 @@
 package store
 
-import "testing"
+import (
+	"errors"
+	"testing"
+)
 
 func TestCreateAndListProjects(t *testing.T) {
 	s := newTestStore(t)
@@ -45,6 +48,22 @@ func TestDeleteProject(t *testing.T) {
 	projects, _ := s.ListProjects()
 	if len(projects) != 1 {
 		t.Errorf("want 1 project after delete, got %d", len(projects))
+	}
+}
+
+func TestRenameProjectNotFound(t *testing.T) {
+	s := newTestStore(t)
+	err := s.RenameProject(99999, "Nope")
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("RenameProject on missing id: got %v, want ErrNotFound", err)
+	}
+}
+
+func TestDeleteProjectNotFound(t *testing.T) {
+	s := newTestStore(t)
+	err := s.DeleteProject(99999)
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("DeleteProject on missing id: got %v, want ErrNotFound", err)
 	}
 }
 
