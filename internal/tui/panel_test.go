@@ -117,6 +117,52 @@ func TestRightColumnDetailsLargerThanTasks(t *testing.T) {
 	}
 }
 
+func TestWorkspaceFitsHeightAndShowsHelp(t *testing.T) {
+	m := newModel(t)
+	m.screen = screenTasks
+	m.store.CreateTask(m.activeProject().ID, "Task one")
+	m.reloadTasks()
+	for _, h := range []int{20, 24, 40} {
+		mi, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: h})
+		mm := mi.(Model)
+		mm.syncTaskScroll()
+		out := mm.viewTasks()
+		lines := strings.Split(out, "\n")
+		if len(lines) > h {
+			t.Fatalf("height %d: rendered %d lines, overflows terminal", h, len(lines))
+		}
+		last := ""
+		for _, l := range lines {
+			if strings.TrimSpace(stripHelpANSI(l)) != "" {
+				last = l
+			}
+		}
+		if !strings.Contains(last, "history") || !strings.Contains(last, "settings") {
+			t.Fatalf("height %d: help line not the last visible line, got %q", h, last)
+		}
+	}
+}
+
+// stripHelpANSI removes ANSI escapes so the assertion sees plain text.
+func stripHelpANSI(s string) string {
+	var b strings.Builder
+	inEsc := false
+	for _, r := range s {
+		if r == '\x1b' {
+			inEsc = true
+			continue
+		}
+		if inEsc {
+			if r == 'm' {
+				inEsc = false
+			}
+			continue
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
+}
+
 func TestTaskScrollFollowsCursor(t *testing.T) {
 	m := newModel(t)
 	m.screen = screenTasks

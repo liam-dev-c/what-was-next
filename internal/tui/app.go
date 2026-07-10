@@ -143,7 +143,7 @@ func (m Model) activeProject() store.Project {
 // Tasks panel (~40%) over the Details panel (~60%). Single source of truth so
 // resizePanels and viewWorkspace never disagree.
 func (m Model) rightColumnHeights() (tasksH, detailH int) {
-	rightColH := m.height - 1 // reserve 1 row for the help line
+	rightColH := m.height - 2 // reserve 2 rows for the help block (margin + text)
 	if rightColH < 6 {
 		rightColH = 6
 	}

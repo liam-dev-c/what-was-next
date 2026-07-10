@@ -236,12 +236,14 @@ func (m Model) viewTasks() string {
 }
 
 func (m Model) viewWorkspace() string {
-	// Left panel: projects.
-	left := panel("Projects", m.projectsBody(), m.focus == focusProjects,
-		projectsPanelWidth, m.height-1)
-
 	rightW := m.width - projectsPanelWidth
 	tasksPanelH, detailPanelH := m.rightColumnHeights()
+
+	// Left panel: projects. Height matches the right column's total so both
+	// sides stay aligned regardless of rounding/clamps in rightColumnHeights.
+	leftH := tasksPanelH + detailPanelH
+	left := panel("Projects", m.projectsBody(), m.focus == focusProjects,
+		projectsPanelWidth, leftH)
 
 	// Tasks panel: render from a fresh-content copy of the viewport so the
 	// list (and any live elapsed times) refreshes every render, not just on
