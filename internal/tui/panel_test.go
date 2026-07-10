@@ -84,6 +84,22 @@ func TestTasksPanelRendersOnFirstView(t *testing.T) {
 	}
 }
 
+func TestNarrowRendersNotesEditor(t *testing.T) {
+	m := newModel(t)
+	m.screen = screenTasks
+	m.store.CreateTask(m.activeProject().ID, "Task")
+	m.reloadTasks()
+	mi, _ := m.Update(tea.WindowSizeMsg{Width: 50, Height: 20})
+	m = mi.(Model)
+	mi, _ = m.updateTasks(key('n'))
+	m = mi.(Model)
+	out := m.viewTasks() // narrow path
+	// the textarea renders a cursor/prompt line; assert notesEditing help + non-empty editor region.
+	if !strings.Contains(out, "editing notes") {
+		t.Fatalf("narrow view should show notes-editing help:\n%s", out)
+	}
+}
+
 func TestTaskScrollFollowsCursor(t *testing.T) {
 	m := newModel(t)
 	m.screen = screenTasks

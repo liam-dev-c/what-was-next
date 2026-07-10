@@ -5,7 +5,6 @@ import "charm.land/lipgloss/v2"
 // Soft truecolor palette tuned for a dark background (dark-mode Ghostty).
 var (
 	accentColor  = lipgloss.Color("#C8A2FF") // lavender: titles, selection, focus
-	dimColor     = lipgloss.Color("#9BA3B4") // light slate: secondary text
 	borderColor  = lipgloss.Color("#4A4E5A") // muted grey: unfocused panel frame
 	errorColor   = lipgloss.Color("#F2A0A0") // rose: errors/status
 	successColor = lipgloss.Color("#A7E0B8") // mint: done / running timer

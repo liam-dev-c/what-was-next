@@ -205,7 +205,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case tea.KeyPressMsg:
 		// Global quit (only when not typing in an input; Task 7 guards this).
-		if !m.editing && (msg.String() == "q" || msg.String() == "ctrl+c") {
+		if !m.editing && !m.notesEditing && (msg.String() == "q" || msg.String() == "ctrl+c") {
 			return m, tea.Quit
 		}
 		switch m.screen {

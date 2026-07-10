@@ -83,3 +83,29 @@ func TestNotesEditCancel(t *testing.T) {
 		t.Fatalf("want notes unchanged on cancel, got %q", m.tasks[0].Notes)
 	}
 }
+
+func TestQuitDoesNotFireWhileEditingNotes(t *testing.T) {
+	m := newModel(t)
+	m.screen = screenTasks
+	m.store.CreateTask(m.activeProject().ID, "Task")
+	m.reloadTasks()
+	mi, _ := m.updateTasks(key('n')) // enter notes editing
+	m = mi.(Model)
+	if !m.notesEditing {
+		t.Fatal("precondition: want notesEditing")
+	}
+	// Note: the notes textarea legitimately returns a non-nil cmd on every
+	// keypress (cursor-blink reset), so "cmd != nil" alone can't distinguish
+	// quitting from ordinary typing. Assert on the actual message instead.
+	mi, cmd := m.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
+	if cmd != nil {
+		if _, isQuit := cmd().(tea.QuitMsg); isQuit {
+			t.Fatal("q must NOT quit while editing notes")
+		}
+	}
+	// and 'q' should reach the textarea as input
+	m = mi.(Model)
+	if !strings.Contains(m.notesArea.Value(), "q") {
+		t.Fatalf("q should be inserted into the note, got %q", m.notesArea.Value())
+	}
+}

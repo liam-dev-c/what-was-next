@@ -333,6 +333,9 @@ func (m Model) viewTasksNarrow() string {
 	b.WriteString(titleStyle.Render("what was next — " + m.activeProject().Name))
 	b.WriteString("\n")
 	b.WriteString(m.taskListBody())
+	if m.notesEditing {
+		b.WriteString("\n" + m.notesArea.View() + "\n")
+	}
 	b.WriteString("\n")
 	b.WriteString(helpStyle.Render(m.tasksHelp()))
 	return lipgloss.NewStyle().Width(m.width).Render(b.String())
