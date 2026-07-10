@@ -42,3 +42,27 @@ func TestWindowSizeSizesViewports(t *testing.T) {
 		t.Fatalf("task viewport too wide: %d", m.taskVP.Width())
 	}
 }
+
+func TestViewTasksWideHasThreePanels(t *testing.T) {
+	m := newModel(t)
+	m.screen = screenTasks
+	mi, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	m = mi.(Model)
+	out := m.viewTasks()
+	for _, want := range []string{"Projects", "Tasks", "Details"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("wide view missing %q panel:\n%s", want, out)
+		}
+	}
+}
+
+func TestViewTasksNarrowFallsBack(t *testing.T) {
+	m := newModel(t)
+	m.screen = screenTasks
+	mi, _ := m.Update(tea.WindowSizeMsg{Width: 50, Height: 20})
+	m = mi.(Model)
+	out := m.viewTasks()
+	if w := lipgloss.Width(out); w > 50 {
+		t.Fatalf("narrow view width %d exceeds 50", w)
+	}
+}

@@ -7,6 +7,7 @@ import (
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 func (m Model) updateTasks(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
@@ -133,31 +134,76 @@ func (m Model) selectedTask() (task, bool) {
 type task = storeTask
 
 func (m Model) viewTasks() string {
-	var b strings.Builder
-	b.WriteString(titleStyle.Render("what was next — " + m.activeProject().Name))
-	b.WriteString("\n")
+	if m.width > 0 && m.width < minWorkspaceWidth {
+		return m.viewTasksNarrow()
+	}
+	return m.viewWorkspace()
+}
 
+func (m Model) viewWorkspace() string {
+	// Left panel: projects.
+	left := panel("Projects", m.projectsBody(), m.focus == focusProjects,
+		projectsPanelWidth, m.height-1)
+
+	rightW := m.width - projectsPanelWidth
+	tasksPanelH := m.height - detailPanelHeight - 1
+
+	// Tasks panel (scrolling viewport).
+	tvp := m.taskVP
+	tvp.SetContent(m.taskListBody())
+	tasksPanel := panel("Tasks · "+m.activeProject().Name, tvp.View(),
+		m.focus == focusTasks, rightW, tasksPanelH)
+
+	// Details panel (scrolling viewport or notes editor).
+	var detailContent string
+	if m.notesEditing {
+		detailContent = m.notesArea.View()
+	} else if t, ok := m.selectedTask(); ok {
+		dvp := m.detailVP
+		dvp.SetContent(m.detailBody(t))
+		detailContent = dvp.View()
+	} else {
+		detailContent = faintStyle.Render("No task selected.")
+	}
+	detailPanel := panel("Details", detailContent, false, rightW, detailPanelHeight)
+
+	right := lipgloss.JoinVertical(lipgloss.Left, tasksPanel, detailPanel)
+	body := lipgloss.JoinHorizontal(lipgloss.Top, left, right)
+
+	return body + "\n" + helpStyle.Render(m.tasksHelp())
+}
+
+func (m Model) tasksHelp() string {
+	if m.notesEditing {
+		return "editing notes · ctrl+s save · esc cancel"
+	}
+	return "tab focus · j/k move · a add · e edit · n notes · t timer · s summary · , settings · q"
+}
+
+// taskListBody renders the task rows for the active project.
+func (m Model) taskListBody() string {
+	var b strings.Builder
 	running, _ := m.store.RunningEntry()
 	for i, t := range m.tasks {
 		cursor := "  "
-		if i == m.cursor {
-			cursor = "> "
+		if m.focus == focusTasks && i == m.cursor {
+			cursor = "▸ "
 		}
 		box := "[ ]"
 		if t.Done {
 			box = "[x]"
 		}
-		clock := "  "
+		clock := ""
 		if running != nil && running.TaskID == t.ID {
-			clock = "⏱ "
+			clock = " ⏱"
 		}
 		suffix := ""
 		if d, ok := m.elapsedFor(t.ID); ok {
 			suffix = "  (" + fmtDuration(d) + ")"
 		}
-		line := fmt.Sprintf("%s%s %s%s%s", cursor, box, clock, t.Title, suffix)
+		line := fmt.Sprintf("%s%s %s%s%s", cursor, box, t.Title, suffix, clock)
 		switch {
-		case i == m.cursor:
+		case m.focus == focusTasks && i == m.cursor:
 			line = selectedStyle.Render(line)
 		case t.Done:
 			line = doneStyle.Render(line)
@@ -165,22 +211,33 @@ func (m Model) viewTasks() string {
 		b.WriteString(line + "\n")
 	}
 	if len(m.tasks) == 0 {
-		b.WriteString(helpStyle.Render("No tasks yet — press 'a' to add one.\n"))
+		b.WriteString(faintStyle.Render("No tasks yet — press 'a' to add one."))
 	}
-
 	if m.editing {
 		verb := "New task"
-		if m.editID != 0 {
+		if m.addingProject {
+			verb = "New project"
+		} else if m.editID != 0 {
 			verb = "Edit task"
 		}
-		b.WriteString("\n" + verb + ": " + m.input.View() + "\n")
+		b.WriteString("\n" + verb + ": " + m.input.View())
 	}
 	if m.status != "" {
 		b.WriteString("\n" + statusStyle.Render(m.status))
 	}
-	b.WriteString(helpStyle.Render(
-		"\na add · e edit · enter done · d del · J/K move · t timer · p projects · s summary · , settings · q quit"))
 	return b.String()
+}
+
+// viewTasksNarrow is the single-column fallback for terminals below
+// minWorkspaceWidth: the task list plus help, restyled with the new palette.
+func (m Model) viewTasksNarrow() string {
+	var b strings.Builder
+	b.WriteString(titleStyle.Render("what was next — " + m.activeProject().Name))
+	b.WriteString("\n")
+	b.WriteString(m.taskListBody())
+	b.WriteString("\n")
+	b.WriteString(helpStyle.Render(m.tasksHelp()))
+	return lipgloss.NewStyle().Width(m.width).Render(b.String())
 }
 
 func fmtDuration(d time.Duration) string {
