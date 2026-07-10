@@ -11,7 +11,7 @@ func (m Model) updateSettings(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	m.status = ""
 	switch msg.String() {
 	case "esc", ",":
-		m.screen = screenHistory
+		m.screen = screenTasks
 	case "enter", "space", "left", "right", "h", "l":
 		// The only setting today: flip the first day of the week.
 		if m.weekStart == time.Monday {
