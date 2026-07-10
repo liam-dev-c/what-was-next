@@ -67,6 +67,23 @@ func TestViewTasksNarrowFallsBack(t *testing.T) {
 	}
 }
 
+func TestTasksPanelRendersOnFirstView(t *testing.T) {
+	m := newModel(t)
+	m.screen = screenTasks
+	m.store.CreateTask(m.activeProject().ID, "Visible task")
+	m.reloadTasks()
+	mi, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	m = mi.(Model)
+	out := m.viewTasks() // no key press first
+	// The Details panel also renders the selected task's title, so assert on
+	// the task-list row form ("[ ] <title>", produced only by taskListBody)
+	// rather than the bare title, which would pass even with a blank Tasks
+	// panel.
+	if !strings.Contains(out, "[ ] Visible task") {
+		t.Fatalf("tasks panel should render task content on first view:\n%s", out)
+	}
+}
+
 func TestTaskScrollFollowsCursor(t *testing.T) {
 	m := newModel(t)
 	m.screen = screenTasks

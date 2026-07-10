@@ -243,8 +243,13 @@ func (m Model) viewWorkspace() string {
 	rightW := m.width - projectsPanelWidth
 	tasksPanelH := m.height - detailPanelHeight - 1
 
-	// Tasks panel (scrolling viewport; content synced by syncTaskScroll).
-	tasksPanel := panel("Tasks · "+m.activeProject().Name, m.taskVP.View(),
+	// Tasks panel: render from a fresh-content copy of the viewport so the
+	// list (and any live elapsed times) refreshes every render, not just on
+	// key events. The copy inherits m.taskVP's YOffset, which syncTaskScroll
+	// still maintains on key events.
+	tvp := m.taskVP
+	tvp.SetContent(m.taskListBody())
+	tasksPanel := panel("Tasks · "+m.activeProject().Name, tvp.View(),
 		m.focus == focusTasks, rightW, tasksPanelH)
 
 	// Details panel (scrolling viewport or notes editor).
