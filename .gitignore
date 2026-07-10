@@ -1,5 +1,8 @@
 # JetBrains IDE
 .idea/
 
+# Claude Code
+.claude/
+
 # Compiled binary
 /what-was-next
