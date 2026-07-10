@@ -37,9 +37,6 @@ func (m Model) updateSummary(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.loadWeek()
 	case "t", "esc":
 		m.screen = screenTasks
-	case "p":
-		m.projCursor = m.active
-		m.screen = screenProjects
 	case ",":
 		m.screen = screenSettings
 	}

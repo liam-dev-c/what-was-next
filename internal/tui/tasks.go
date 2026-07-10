@@ -63,7 +63,7 @@ func (m Model) updateTasks(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 	case "p":
 		m.projCursor = m.active
-		m.screen = screenProjects
+		m.focus = focusProjects
 	case "s":
 		m.summaryPeriod = periodDay
 		m.loadSummary()

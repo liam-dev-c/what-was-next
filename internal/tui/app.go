@@ -17,7 +17,6 @@ type screen int
 
 const (
 	screenTasks screen = iota
-	screenProjects
 	screenSummary
 	screenSettings
 )
@@ -212,8 +211,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch m.screen {
 		case screenTasks:
 			return m.updateTasks(msg)
-		case screenProjects:
-			return m.updateProjects(msg)
 		case screenSummary:
 			return m.updateSummary(msg)
 		case screenSettings:
@@ -226,8 +223,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() tea.View {
 	var content string
 	switch m.screen {
-	case screenProjects:
-		content = m.viewProjects()
 	case screenSummary:
 		content = m.viewSummary()
 	case screenSettings:
