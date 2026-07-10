@@ -76,6 +76,76 @@ func TestDailySummaryExcludesOtherDays(t *testing.T) {
 	}
 }
 
+func TestWeeklySummary(t *testing.T) {
+	s := newTestStore(t)
+	pid := projectID(t, s)
+
+	// Completed within the week: Wed Jul 8.
+	done, _ := s.CreateTask(pid, "Shipped")
+	s.db.Exec(`UPDATE tasks SET done = 1, done_at = ? WHERE id = ?`,
+		time.Date(2026, 7, 8, 9, 0, 0, 0, time.UTC), done.ID)
+
+	// Time tracked: 1h Wed Jul 8, 30m Fri Jul 10.
+	timed, _ := s.CreateTask(pid, "Coding")
+	s.db.Exec(`INSERT INTO time_entries (task_id, started_at, ended_at) VALUES (?, ?, ?)`,
+		timed.ID, time.Date(2026, 7, 8, 10, 0, 0, 0, time.UTC), time.Date(2026, 7, 8, 11, 0, 0, 0, time.UTC))
+	s.db.Exec(`INSERT INTO time_entries (task_id, started_at, ended_at) VALUES (?, ?, ?)`,
+		timed.ID, time.Date(2026, 7, 10, 14, 0, 0, 0, time.UTC), time.Date(2026, 7, 10, 14, 30, 0, 0, time.UTC))
+
+	// Outside the week (Sun Jul 5) — must be excluded.
+	old, _ := s.CreateTask(pid, "LastWeek")
+	s.db.Exec(`UPDATE tasks SET done = 1, done_at = ? WHERE id = ?`,
+		time.Date(2026, 7, 5, 9, 0, 0, 0, time.UTC), old.ID)
+	s.db.Exec(`INSERT INTO time_entries (task_id, started_at, ended_at) VALUES (?, ?, ?)`,
+		old.ID, time.Date(2026, 7, 5, 10, 0, 0, 0, time.UTC), time.Date(2026, 7, 5, 12, 0, 0, 0, time.UTC))
+
+	// Thursday Jul 9, Monday-start week => Mon Jul 6 .. Sun Jul 12.
+	ws, err := s.WeeklySummary(time.Date(2026, 7, 9, 12, 0, 0, 0, time.UTC), time.Monday)
+	if err != nil {
+		t.Fatalf("WeeklySummary: %v", err)
+	}
+	if !ws.Start.Equal(time.Date(2026, 7, 6, 0, 0, 0, 0, time.UTC)) {
+		t.Fatalf("want week start Mon Jul 6, got %s", ws.Start)
+	}
+	if !ws.End.Equal(time.Date(2026, 7, 12, 0, 0, 0, 0, time.UTC)) {
+		t.Fatalf("want week end Sun Jul 12, got %s", ws.End)
+	}
+	if len(ws.Completed) != 1 || ws.Completed[0].ID != done.ID {
+		t.Fatalf("want only the in-week completed task, got %+v", ws.Completed)
+	}
+	if ws.Total != 90*time.Minute {
+		t.Fatalf("want total 1h30m, got %s", ws.Total)
+	}
+	if len(ws.Days) != 7 {
+		t.Fatalf("want 7 day buckets, got %d", len(ws.Days))
+	}
+	// index 2 = Wed Jul 8, index 4 = Fri Jul 10.
+	if ws.Days[2].Duration != time.Hour {
+		t.Fatalf("want Wed 1h, got %s", ws.Days[2].Duration)
+	}
+	if ws.Days[4].Duration != 30*time.Minute {
+		t.Fatalf("want Fri 30m, got %s", ws.Days[4].Duration)
+	}
+	if ws.Days[0].Day.Weekday() != time.Monday {
+		t.Fatalf("want first bucket Monday, got %s", ws.Days[0].Day.Weekday())
+	}
+}
+
+func TestWeeklySummarySundayStart(t *testing.T) {
+	s := newTestStore(t)
+	// Thursday Jul 9 with a Sunday-start week => Sun Jul 5 .. Sat Jul 11.
+	ws, err := s.WeeklySummary(time.Date(2026, 7, 9, 12, 0, 0, 0, time.UTC), time.Sunday)
+	if err != nil {
+		t.Fatalf("WeeklySummary: %v", err)
+	}
+	if !ws.Start.Equal(time.Date(2026, 7, 5, 0, 0, 0, 0, time.UTC)) {
+		t.Fatalf("want week start Sun Jul 5, got %s", ws.Start)
+	}
+	if ws.Days[0].Day.Weekday() != time.Sunday {
+		t.Fatalf("want first bucket Sunday, got %s", ws.Days[0].Day.Weekday())
+	}
+}
+
 func TestDailySummaryBucketsSubSecondBoundary(t *testing.T) {
 	s := newTestStore(t)
 	pid := projectID(t, s)

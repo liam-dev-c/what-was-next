@@ -22,4 +22,9 @@ var (
 	helpStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("240")).
 			MarginTop(1)
+
+	// faintStyle is helpStyle without the top margin, for dim text used inline
+	// (e.g. the day/week tab selector) rather than as a trailing block.
+	faintStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("240"))
 )

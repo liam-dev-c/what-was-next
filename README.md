@@ -7,7 +7,9 @@ A simple terminal task manager and time tracker — a small take on Super Produc
 - Task list per project (add, edit, complete, delete, reorder)
 - Per-task time tracking with a live timer
 - Projects to group tasks
-- Daily summary of completed tasks and time tracked
+- Summary of completed tasks and time tracked — the landing screen — with a
+  day/week toggle (weekly view includes a per-day breakdown)
+- Settings, including which day the week starts on
 
 ## Install
 
@@ -20,10 +22,14 @@ go install github.com/liam-dev-c/what-was-next@latest
 Run `what-was-next`. Data is stored at `~/.config/what-was-next/what-was-next.db`
 (honoring `XDG_CONFIG_HOME`).
 
-The daily summary groups tasks by your **local** calendar day. Timestamps are
-stored in UTC and converted to your machine's timezone when computing "today".
+The summary opens by default. It groups tasks by your **local** calendar day (or
+week). Timestamps are stored in UTC and converted to your machine's timezone
+when computing "today" and "this week". The week starts on the day chosen in
+settings (Monday by default).
 
 ### Keys
+
+Tasks screen:
 
 | Key | Action |
 |-----|--------|
@@ -34,6 +40,17 @@ stored in UTC and converted to your machine's timezone when computing "today".
 | `J` / `K` | move task down / up |
 | `t` | start/stop timer on task |
 | `p` | projects |
-| `s` | daily summary |
+| `s` | summary |
+| `,` | settings |
 | `esc` | back |
+| `q` | quit |
+
+Summary screen:
+
+| Key | Action |
+|-----|--------|
+| `d` / `w` | day / week view |
+| `t` | tasks |
+| `p` | projects |
+| `,` | settings |
 | `q` | quit |
