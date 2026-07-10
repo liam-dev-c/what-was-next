@@ -49,8 +49,8 @@ var (
 			BorderForeground(borderColor)
 
 	borderFocusStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(accentColor)
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(accentColor)
 )
 
 // panel renders body inside a rounded border sized to width×height cells,

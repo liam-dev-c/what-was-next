@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"charm.land/lipgloss/v2"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 func TestPanelExactSizeWhenPadded(t *testing.T) {
