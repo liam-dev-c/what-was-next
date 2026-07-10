@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"charm.land/bubbles/v2/textarea"
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -327,9 +328,37 @@ func fmtDuration(d time.Duration) string {
 	return fmt.Sprintf("%dm%02ds", mnt, s)
 }
 
-// Notes editing is implemented in Task 6; stubs keep the package compiling.
-func (m Model) updateNotes(tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	m.notesEditing = false
-	return m, nil
+func (m Model) beginNotes() (tea.Model, tea.Cmd) {
+	t, ok := m.selectedTask()
+	if !ok {
+		return m, nil
+	}
+	ta := textarea.New()
+	ta.SetWidth(m.detailVP.Width())
+	ta.SetHeight(m.detailVP.Height())
+	ta.SetValue(t.Notes)
+	cmd := ta.Focus()
+	m.notesArea = ta
+	m.notesEditing = true
+	return m, cmd
 }
-func (m Model) beginNotes() (tea.Model, tea.Cmd) { return m, nil }
+
+func (m Model) updateNotes(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch {
+	case msg.Code == 's' && msg.Mod == tea.ModCtrl:
+		if t, ok := m.selectedTask(); ok {
+			m.setStatus(m.store.UpdateTask(t.ID, t.Title, m.notesArea.Value()))
+			m.setStatus(m.reloadTasks())
+		}
+		m.notesEditing = false
+		m.notesArea.Blur()
+		return m, nil
+	case msg.Code == tea.KeyEscape:
+		m.notesEditing = false
+		m.notesArea.Blur()
+		return m, nil
+	}
+	var cmd tea.Cmd
+	m.notesArea, cmd = m.notesArea.Update(msg)
+	return m, cmd
+}

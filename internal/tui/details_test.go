@@ -3,6 +3,8 @@ package tui
 import (
 	"strings"
 	"testing"
+
+	tea "charm.land/bubbletea/v2"
 )
 
 func TestDetailBodyShowsStatusAndTime(t *testing.T) {
@@ -38,5 +40,46 @@ func TestProjectsBodyMarksActive(t *testing.T) {
 	body := m.projectsBody()
 	if !strings.Contains(body, "Inbox") {
 		t.Fatalf("projects body missing Inbox: %s", body)
+	}
+}
+
+func TestNotesEditSaves(t *testing.T) {
+	m := newModel(t)
+	m.screen = screenTasks
+	m.store.CreateTask(m.activeProject().ID, "Task")
+	m.reloadTasks()
+
+	mi, _ := m.updateTasks(key('n'))
+	m = mi.(Model)
+	if !m.notesEditing {
+		t.Fatal("want notesEditing after 'n'")
+	}
+	for _, r := range "hello" {
+		mi, _ = m.updateTasks(key(r))
+		m = mi.(Model)
+	}
+	mi, _ = m.updateTasks(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
+	m = mi.(Model)
+	if m.notesEditing {
+		t.Fatal("want editing off after ctrl+s")
+	}
+	if m.tasks[0].Notes != "hello" {
+		t.Fatalf("want notes 'hello', got %q", m.tasks[0].Notes)
+	}
+}
+
+func TestNotesEditCancel(t *testing.T) {
+	m := newModel(t)
+	m.screen = screenTasks
+	m.store.CreateTask(m.activeProject().ID, "Task")
+	m.reloadTasks()
+	mi, _ := m.updateTasks(key('n'))
+	m = mi.(Model)
+	mi, _ = m.updateTasks(key('x'))
+	m = mi.(Model)
+	mi, _ = m.updateTasks(tea.KeyPressMsg{Code: tea.KeyEscape})
+	m = mi.(Model)
+	if m.tasks[0].Notes != "" {
+		t.Fatalf("want notes unchanged on cancel, got %q", m.tasks[0].Notes)
 	}
 }
