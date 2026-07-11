@@ -76,6 +76,11 @@ type Model struct {
 
 	width  int
 	height int
+
+	// dataVersion is the last-seen SQLite PRAGMA data_version. The tick reloads
+	// store-backed state whenever it changes, i.e. when another process (the MCP
+	// server) has committed. See refreshIfChanged.
+	dataVersion int64
 }
 
 // storeTask is an alias so other files in this package can name store.Task
@@ -101,6 +106,10 @@ func New(s *store.Store) (Model, error) {
 	m.taskVP = viewport.New()
 	m.detailVP = viewport.New()
 	m.notesArea = textarea.New()
+	// Prime the change-detection baseline so the first tick doesn't reload for
+	// changes that predate startup. Best-effort: on error we leave it at 0 and
+	// the first tick simply reloads once.
+	m.dataVersion, _ = s.DataVersion()
 	return m, nil
 }
 
@@ -130,6 +139,75 @@ func (m *Model) reloadTasks() error {
 		m.cursor = max(0, len(m.tasks)-1)
 	}
 	return nil
+}
+
+// refreshIfChanged reloads store-backed state when another process (e.g. the
+// MCP server) has committed a change since the last tick. It is a no-op while
+// the user is mid-edit so typing is never interrupted — the baseline is left
+// stale so the next tick after the edit ends picks the change up.
+func (m *Model) refreshIfChanged() {
+	if m.editing || m.notesEditing || m.addingProject {
+		return
+	}
+	v, err := m.store.DataVersion()
+	if err != nil || v == m.dataVersion {
+		return
+	}
+	m.dataVersion = v
+	m.reloadPreservingSelection()
+}
+
+// reloadPreservingSelection reloads projects and tasks after an external change,
+// keeping the active project and selected task fixed by id (their indices may
+// have shifted) rather than snapping the cursor to a clamped position.
+func (m *Model) reloadPreservingSelection() {
+	activeProjectID := m.activeProject().ID
+	var selectedTaskID int64
+	if t, ok := m.selectedTask(); ok {
+		selectedTaskID = t.ID
+	}
+
+	if err := m.reloadProjects(); err != nil {
+		m.setStatus(err)
+		return
+	}
+	if activeProjectID != 0 {
+		for i, p := range m.projects {
+			if p.ID == activeProjectID {
+				m.active = i
+				break
+			}
+		}
+	}
+	if m.projCursor >= len(m.projects) {
+		m.projCursor = max(0, len(m.projects)-1)
+	}
+
+	if err := m.reloadTasks(); err != nil {
+		m.setStatus(err)
+		return
+	}
+	if selectedTaskID != 0 {
+		for i, t := range m.tasks {
+			if t.ID == selectedTaskID {
+				m.cursor = i
+				break
+			}
+		}
+	}
+
+	// Keep the history screen's snapshot current too.
+	if m.screen == screenHistory {
+		if m.summaryPeriod == periodWeek {
+			m.loadWeek()
+		} else {
+			m.loadSummary()
+		}
+	}
+
+	if m.width > 0 {
+		m.syncTaskScroll()
+	}
 }
 
 func (m Model) activeProject() store.Project {
@@ -217,6 +295,7 @@ func (m Model) Init() tea.Cmd { return tickCmd() }
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tickMsg:
+		m.refreshIfChanged()
 		return m, tickCmd()
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height

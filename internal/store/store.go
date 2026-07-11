@@ -122,4 +122,16 @@ func (s *Store) seedDefaultProject() error {
 	return nil
 }
 
+// DataVersion returns SQLite's PRAGMA data_version. Its value is unaffected by
+// writes on this Store's own connection but changes whenever another connection
+// commits, so the TUI can poll it to detect external edits (e.g. from the MCP
+// server) without triggering on its own mutations.
+func (s *Store) DataVersion() (int64, error) {
+	var v int64
+	if err := s.db.QueryRow(`PRAGMA data_version`).Scan(&v); err != nil {
+		return 0, fmt.Errorf("read data_version: %w", err)
+	}
+	return v, nil
+}
+
 func (s *Store) Close() error { return s.db.Close() }
