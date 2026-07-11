@@ -12,6 +12,9 @@ func TestCommand(t *testing.T) {
 		{[]string{"mcp"}, cmdMCPServe},
 		{[]string{"mcp", "install"}, cmdMCPInstall},
 		{[]string{"mcp", "install", "--scope", "project"}, cmdMCPInstall},
+		{[]string{"help"}, cmdHelp},
+		{[]string{"-h"}, cmdHelp},
+		{[]string{"--help"}, cmdHelp},
 		{[]string{"nonsense"}, cmdTUI},
 	}
 	for _, c := range cases {

@@ -20,6 +20,7 @@ const (
 	cmdTUI cmd = iota
 	cmdMCPServe
 	cmdMCPInstall
+	cmdHelp
 )
 
 func main() {
@@ -31,6 +32,9 @@ func main() {
 
 func run(args []string) error {
 	switch command(args) {
+	case cmdHelp:
+		printHelp()
+		return nil
 	case cmdMCPInstall:
 		return mcpserver.Install(scopeFlag(args))
 	case cmdMCPServe:
@@ -42,13 +46,35 @@ func run(args []string) error {
 
 // command classifies CLI args into a subcommand.
 func command(args []string) cmd {
-	if len(args) >= 1 && args[0] == "mcp" {
-		if len(args) >= 2 && args[1] == "install" {
-			return cmdMCPInstall
+	if len(args) >= 1 {
+		switch args[0] {
+		case "help", "-h", "--help":
+			return cmdHelp
+		case "mcp":
+			if len(args) >= 2 && args[1] == "install" {
+				return cmdMCPInstall
+			}
+			return cmdMCPServe
 		}
-		return cmdMCPServe
 	}
 	return cmdTUI
+}
+
+// printHelp writes usage to stdout.
+func printHelp() {
+	fmt.Print(`what-was-next — a terminal task manager and time tracker.
+
+Usage:
+  what-was-next              Launch the interactive TUI (default)
+  what-was-next mcp          Run the MCP server (Claude Code invokes this)
+  what-was-next mcp install  Register the MCP server with Claude Code
+                             (optional: --scope user|project|local, default user)
+  what-was-next help         Show this help
+  what-was-next -h, --help   Show this help
+
+Data is stored at ~/.config/what-was-next/what-was-next.db
+(honoring XDG_CONFIG_HOME).
+`)
 }
 
 // scopeFlag reads "--scope <value>" from args, defaulting to "user".
