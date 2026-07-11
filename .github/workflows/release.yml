@@ -46,17 +46,19 @@ jobs:
           git tag -a "$NEXT" -m "Release $NEXT"
           git push origin "$NEXT"
 
-      - name: Build macOS binaries
+      - name: Build release binaries
         run: |
           set -euo pipefail
           mkdir -p dist
           # modernc.org/sqlite is pure Go, so CGO is not needed and we can
-          # cross-compile the macOS binaries from the Ubuntu runner.
-          for arch in amd64 arm64; do
-            out="dist/what-was-next-darwin-$arch"
-            echo "Building $out"
-            CGO_ENABLED=0 GOOS=darwin GOARCH="$arch" \
-              go build -trimpath -ldflags "-s -w" -o "$out" .
+          # cross-compile every target from the Ubuntu runner.
+          for os in darwin linux; do
+            for arch in amd64 arm64; do
+              out="dist/what-was-next-$os-$arch"
+              echo "Building $out"
+              CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" \
+                go build -trimpath -ldflags "-s -w" -o "$out" .
+            done
           done
 
       - name: Create GitHub release
@@ -66,7 +68,7 @@ jobs:
         run: |
           set -euo pipefail
           gh release create "$NEXT" --title "$NEXT" --generate-notes --verify-tag \
-            dist/what-was-next-darwin-*
+            dist/what-was-next-*
 
   bump-formula:
     name: Bump Homebrew formula
@@ -94,7 +96,7 @@ jobs:
           mkdir -p dist
           gh release download "$TAG" \
             --repo "$GITHUB_REPOSITORY" \
-            --pattern 'what-was-next-darwin-*' --dir dist
+            --pattern 'what-was-next-*' --dir dist
 
       - name: Render formula
         env:
