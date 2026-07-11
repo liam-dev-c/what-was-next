@@ -97,6 +97,8 @@ func (m Model) updateTasksPanel(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 	case "n":
 		return m.beginNotes() // added in Task 6
+	case "g":
+		return m.beginTags()
 	case "enter", "space":
 		if t, ok := m.selectedTask(); ok {
 			m.setStatus(m.store.SetTaskDone(t.ID, !t.Done))
@@ -176,9 +178,47 @@ func (m *Model) beginInput(id int64, initial string, project bool) {
 	m.addingProject = project
 }
 
+// beginTags opens the shared text input prefilled with the selected task's
+// current tags as a comma-separated list. Enter replaces the tag set.
+func (m Model) beginTags() (tea.Model, tea.Cmd) {
+	t, ok := m.selectedTask()
+	if !ok {
+		return m, nil
+	}
+	ti := textinput.New()
+	ti.SetValue(strings.Join(t.Tags, ", "))
+	ti.Focus()
+	ti.CursorEnd()
+	m.input = ti
+	m.editing = true
+	m.editID = t.ID
+	m.taggingTask = true
+	return m, textinput.Blink
+}
+
+// parseTags splits a comma-separated tag input into names; the store handles
+// trimming, de-duplication, and case-folding.
+func parseTags(s string) []string {
+	var out []string
+	for _, part := range strings.Split(s, ",") {
+		if p := strings.TrimSpace(part); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
 func (m Model) updateInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.Code {
 	case tea.KeyEnter:
+		if m.taggingTask {
+			// An empty value clears all tags, so this runs unconditionally.
+			m.setStatus(m.store.SetTaskTags(m.editID, parseTags(m.input.Value())))
+			m.setStatus(m.reloadTasks())
+			m.editing = false
+			m.taggingTask = false
+			return m, nil
+		}
 		val := strings.TrimSpace(m.input.Value())
 		if val != "" {
 			if m.addingProject {
@@ -200,6 +240,7 @@ func (m Model) updateInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case tea.KeyEscape:
 		m.editing = false
 		m.addingProject = false
+		m.taggingTask = false
 		return m, nil
 	}
 	var cmd tea.Cmd
@@ -277,7 +318,7 @@ func (m Model) tasksHelp() string {
 	if m.notesEditing {
 		return "editing notes · ctrl+s save · esc cancel"
 	}
-	return "tab focus · j/k move · a add · e edit · n notes · t timer · h history · , settings · q"
+	return "tab focus · j/k move · a add · e edit · n notes · g tags · t timer · h history · , settings · q"
 }
 
 // taskListBody renders the task rows for the active project.
@@ -301,7 +342,11 @@ func (m Model) taskListBody() string {
 		if d, ok := m.elapsedFor(t.ID); ok {
 			suffix = "  (" + fmtDuration(d) + ")"
 		}
-		line := fmt.Sprintf("%s%s %s%s%s", cursor, box, t.Title, suffix, clock)
+		tags := ""
+		if len(t.Tags) > 0 {
+			tags = "  " + tagLabel(t.Tags)
+		}
+		line := fmt.Sprintf("%s%s %s%s%s%s", cursor, box, t.Title, suffix, tags, clock)
 		switch {
 		case m.focus == focusTasks && i == m.cursor:
 			line = selectedStyle.Render(line)
@@ -315,9 +360,12 @@ func (m Model) taskListBody() string {
 	}
 	if m.editing {
 		verb := "New task"
-		if m.addingProject {
+		switch {
+		case m.taggingTask:
+			verb = "Tags (comma-separated)"
+		case m.addingProject:
 			verb = "New project"
-		} else if m.editID != 0 {
+		case m.editID != 0:
 			verb = "Edit task"
 		}
 		b.WriteString("\n" + verb + ": " + m.input.View())

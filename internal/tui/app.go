@@ -51,9 +51,10 @@ type Model struct {
 	status string
 
 	// input state (task add/edit) — populated in Task 7
-	editing bool
-	editID  int64 // 0 == adding a new task
-	input   textinput.Model
+	editing     bool
+	editID      int64 // 0 == adding a new task
+	input       textinput.Model
+	taggingTask bool // input is editing a task's comma-separated tags
 
 	// panel workspace state
 	focus         focusArea

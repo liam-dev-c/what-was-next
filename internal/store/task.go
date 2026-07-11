@@ -42,7 +42,6 @@ func (s *Store) ListTasks(projectID int64) ([]Task, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list tasks: %w", err)
 	}
-	defer rows.Close()
 	var out []Task
 	for rows.Next() {
 		var t Task
@@ -51,6 +50,7 @@ func (s *Store) ListTasks(projectID int64) ([]Task, error) {
 			&t.ID, &t.ProjectID, &t.Title, &t.Notes, &t.Done,
 			&t.SortOrder, &t.CreatedAt, &doneAt,
 		); err != nil {
+			rows.Close()
 			return nil, fmt.Errorf("scan task: %w", err)
 		}
 		if doneAt.Valid {
@@ -59,7 +59,17 @@ func (s *Store) ListTasks(projectID int64) ([]Task, error) {
 		}
 		out = append(out, t)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return nil, fmt.Errorf("list tasks: %w", err)
+	}
+	// Close before the tags query: the store caps open connections at 1, so a
+	// nested query while these rows are open would deadlock.
+	rows.Close()
+	if err := s.attachTags(projectID, out); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (s *Store) UpdateTask(id int64, title, notes string) error {

@@ -37,12 +37,13 @@ func addTaskTools(srv *mcp.Server, s *store.Store) {
 	})
 
 	type createArgs struct {
-		ProjectID int64  `json:"project_id" jsonschema:"id of the project to add the task to"`
-		Title     string `json:"title" jsonschema:"task title"`
+		ProjectID int64    `json:"project_id" jsonschema:"id of the project to add the task to"`
+		Title     string   `json:"title" jsonschema:"task title"`
+		Tags      []string `json:"tags,omitempty" jsonschema:"optional tag names to apply to the new task"`
 	}
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "create_task",
-		Description: "Create a task in a project and return it.",
+		Description: "Create a task in a project and return it. Optionally applies tags.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args createArgs) (*mcp.CallToolResult, any, error) {
 		if args.Title == "" {
 			return nil, nil, fmt.Errorf("title is required")
@@ -51,7 +52,27 @@ func addTaskTools(srv *mcp.Server, s *store.Store) {
 		if err != nil {
 			return nil, nil, err
 		}
+		if len(args.Tags) > 0 {
+			if err := s.SetTaskTags(task.ID, args.Tags); err != nil {
+				return nil, nil, err
+			}
+			task.Tags = args.Tags
+		}
 		return jsonResult(task)
+	})
+
+	type tagsArgs struct {
+		ID   int64    `json:"id" jsonschema:"id of the task to tag"`
+		Tags []string `json:"tags" jsonschema:"the full set of tag names for the task; replaces any existing tags, and an empty list clears them"`
+	}
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "set_task_tags",
+		Description: "Replace the tags on a task. Pass the complete tag set; an empty list clears all tags.",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, args tagsArgs) (*mcp.CallToolResult, any, error) {
+		if err := s.SetTaskTags(args.ID, args.Tags); err != nil {
+			return nil, nil, err
+		}
+		return textResult(fmt.Sprintf("set %d tag(s) on task %d", len(args.Tags), args.ID))
 	})
 
 	type updateArgs struct {

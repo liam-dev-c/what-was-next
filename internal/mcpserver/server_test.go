@@ -106,6 +106,28 @@ func TestCreateProjectRequiresName(t *testing.T) {
 	callErr(t, sess, "create_project", map[string]any{"name": ""})
 }
 
+func TestCreateTaskWithTags(t *testing.T) {
+	sess := newSession(t, newStore(t))
+	call(t, sess, "create_task", map[string]any{
+		"project_id": 1, "title": "Tagged", "tags": []any{"urgent", "api"},
+	})
+	out := call(t, sess, "list_tasks", map[string]any{"project_id": 1})
+	if !strings.Contains(out, "urgent") || !strings.Contains(out, "api") {
+		t.Fatalf("list_tasks missing tags: %s", out)
+	}
+}
+
+func TestSetTaskTagsReplaces(t *testing.T) {
+	sess := newSession(t, newStore(t))
+	call(t, sess, "create_task", map[string]any{"project_id": 1, "title": "T"})
+	call(t, sess, "set_task_tags", map[string]any{"id": 1, "tags": []any{"one", "two"}})
+	call(t, sess, "set_task_tags", map[string]any{"id": 1, "tags": []any{"three"}})
+	out := call(t, sess, "list_tasks", map[string]any{"project_id": 1})
+	if !strings.Contains(out, `"Tags":["three"]`) {
+		t.Fatalf("set_task_tags did not replace: %s", out)
+	}
+}
+
 func TestParseDirection(t *testing.T) {
 	cases := []struct {
 		in      string

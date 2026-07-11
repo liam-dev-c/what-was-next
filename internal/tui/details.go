@@ -35,6 +35,14 @@ func (m Model) detailBody(t store.Task) string {
 	}
 	b.WriteString(faintStyle.Render(created) + "\n")
 
+	// Tags.
+	b.WriteString("\n" + selectedStyle.Render("tags") + faintStyle.Render("  (g to edit)") + "\n")
+	if len(t.Tags) == 0 {
+		b.WriteString(faintStyle.Render("  —") + "\n")
+	} else {
+		b.WriteString("  " + tagLabel(t.Tags) + "\n")
+	}
+
 	// Notes.
 	b.WriteString("\n" + selectedStyle.Render("notes") + faintStyle.Render("  (n to edit)") + "\n")
 	if strings.TrimSpace(t.Notes) == "" {
@@ -43,6 +51,11 @@ func (m Model) detailBody(t store.Task) string {
 		b.WriteString(t.Notes + "\n")
 	}
 	return b.String()
+}
+
+// tagLabel renders tags as a space-separated "#name" list.
+func tagLabel(tags []string) string {
+	return "#" + strings.Join(tags, " #")
 }
 
 // successText colours a short fragment with the mint success colour.
