@@ -5,6 +5,7 @@ A simple terminal task manager and time tracker — a small take on Super Produc
 ## Features
 
 - Task list per project (add, edit, complete, delete, reorder)
+- Tags on tasks (comma-separated; shown in the list and details)
 - Per-task time tracking with a live timer
 - Projects to group tasks
 - Summary of completed tasks and time tracked — the landing screen — with a
@@ -35,6 +36,7 @@ Tasks screen:
 |-----|--------|
 | `a` | add task/project |
 | `e` | edit task |
+| `g` | edit tags (comma-separated) |
 | `enter` / `space` | toggle done / select |
 | `d` | delete task |
 | `J` / `K` | move task down / up |
@@ -73,8 +75,8 @@ command to run manually. Restart Claude Code afterward.
 The server exposes these tools:
 
 - Projects: `list_projects`, `create_project`, `rename_project`, `delete_project`
-- Tasks: `list_tasks`, `create_task`, `update_task`, `set_task_done`,
-  `move_task`, `delete_task`
+- Tasks: `list_tasks`, `create_task` (optional `tags`), `update_task`,
+  `set_task_done`, `set_task_tags`, `move_task`, `delete_task`
 
 `delete_project` also deletes that project's tasks.
 

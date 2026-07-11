@@ -29,6 +29,7 @@ type Task struct {
 	SortOrder int64
 	CreatedAt time.Time
 	DoneAt    *time.Time
+	Tags      []string
 }
 
 type TimeEntry struct {
@@ -69,6 +70,15 @@ CREATE TABLE IF NOT EXISTS time_entries (
 CREATE TABLE IF NOT EXISTS settings (
 	key   TEXT PRIMARY KEY,
 	value TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS tags (
+	id   INTEGER PRIMARY KEY AUTOINCREMENT,
+	name TEXT NOT NULL COLLATE NOCASE UNIQUE
+);
+CREATE TABLE IF NOT EXISTS task_tags (
+	task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+	tag_id  INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+	PRIMARY KEY (task_id, tag_id)
 );
 `
 
