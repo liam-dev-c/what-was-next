@@ -57,12 +57,13 @@ type Model struct {
 	taggingTask bool // input is editing a task's comma-separated tags
 
 	// panel workspace state
-	focus         focusArea
-	addingProject bool // input is naming a new project, not a task
-	notesEditing  bool
-	notesArea     textarea.Model
-	taskVP        viewport.Model
-	detailVP      viewport.Model
+	focus            focusArea
+	addingProject    bool // input is naming a new project, not a task
+	showAllCompleted bool // c: reveal completed tasks finished before today
+	notesEditing     bool
+	notesArea        textarea.Model
+	taskVP           viewport.Model
+	detailVP         viewport.Model
 
 	// project switcher cursor — populated in Task 8
 	projCursor int
@@ -136,10 +137,17 @@ func (m *Model) reloadTasks() error {
 		return fmt.Errorf("load tasks: %w", err)
 	}
 	m.tasks = tasks
-	if m.cursor >= len(m.tasks) {
-		m.cursor = max(0, len(m.tasks)-1)
+	if n := m.visibleCount(); m.cursor >= n {
+		m.cursor = max(0, n-1)
 	}
 	return nil
+}
+
+// visibleCount is the number of task rows currently shown in the list (open
+// tasks plus the visible slice of completed ones). The cursor indexes this set.
+func (m Model) visibleCount() int {
+	vis, _ := m.visibleTasks()
+	return len(vis)
 }
 
 // refreshIfChanged reloads store-backed state when another process (e.g. the
@@ -189,7 +197,8 @@ func (m *Model) reloadPreservingSelection() {
 		return
 	}
 	if selectedTaskID != 0 {
-		for i, t := range m.tasks {
+		vis, _ := m.visibleTasks()
+		for i, t := range vis {
 			if t.ID == selectedTaskID {
 				m.cursor = i
 				break
