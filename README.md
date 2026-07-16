@@ -30,22 +30,53 @@ settings (Monday by default).
 
 ### Keys
 
-Tasks screen:
+The tasks screen has three panels — **Projects** (left), **Tasks** (top-right),
+and **Details** (bottom-right). `tab` / `shift+tab` cycle focus between them.
+Navigation lives in the Tasks list; everything that edits a single task lives in
+Details, which you enter with `enter` (or `tab`).
+
+Global (any panel):
 
 | Key | Action |
 |-----|--------|
-| `a` | add task/project |
-| `e` | edit task |
-| `g` | edit tags (comma-separated) |
-| `enter` / `space` | toggle done / select |
-| `d` | delete task |
-| `J` / `K` | move task down / up |
-| `t` | start/stop timer on task |
-| `p` | projects |
-| `s` | summary |
+| `tab` / `shift+tab` | cycle panel focus |
+| `h` | history / summary |
 | `,` | settings |
-| `esc` | back |
 | `q` | quit |
+
+Tasks panel (navigation):
+
+| Key | Action |
+|-----|--------|
+| `j` / `k` | move selection |
+| `enter` | open the task in Details |
+| `a` | add task |
+| `J` / `K` | reorder task down / up |
+| `c` | show/hide completed tasks |
+
+Completed tasks drop below a divider, newest-first, and hide once their
+completion day has passed; `c` reveals every completed task.
+
+Details panel (acts on the selected task):
+
+| Key | Action |
+|-----|--------|
+| `e` | edit title |
+| `n` | edit notes |
+| `g` | edit tags (comma-separated) |
+| `enter` / `space` | toggle done |
+| `t` | start/stop timer |
+| `d` | delete task |
+| `j` / `k` | scroll notes |
+| `esc` | back to the Tasks list |
+
+Projects panel:
+
+| Key | Action |
+|-----|--------|
+| `j` / `k` | move selection |
+| `enter` | switch to project |
+| `a` | add project |
 
 Summary screen:
 

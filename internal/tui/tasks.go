@@ -22,10 +22,10 @@ func (m Model) updateTasks(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	m.status = ""
 	switch msg.String() {
 	case "tab":
-		m.toggleFocus()
+		m.cycleFocus(1)
 		return m, nil
 	case "shift+tab":
-		m.toggleFocus()
+		m.cycleFocus(-1)
 		return m, nil
 	case "h":
 		m.summaryPeriod = periodDay
@@ -36,18 +36,34 @@ func (m Model) updateTasks(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.screen = screenSettings
 		return m, nil
 	}
-	if m.focus == focusProjects {
+	switch m.focus {
+	case focusProjects:
 		return m.updateProjectsPanel(msg)
+	case focusDetails:
+		return m.updateDetailsPanel(msg)
+	default:
+		return m.updateTasksPanel(msg)
 	}
-	return m.updateTasksPanel(msg)
 }
 
-func (m *Model) toggleFocus() {
-	if m.focus == focusTasks {
-		m.focus = focusProjects
+// cycleFocus advances focus by dir (+1 forward, -1 back) through focusOrder.
+func (m *Model) cycleFocus(dir int) {
+	idx := 0
+	for i, f := range focusOrder {
+		if f == m.focus {
+			idx = i
+			break
+		}
+	}
+	idx = (idx + dir + len(focusOrder)) % len(focusOrder)
+	m.setFocus(focusOrder[idx])
+}
+
+// setFocus moves focus to f, priming panel-specific state.
+func (m *Model) setFocus(f focusArea) {
+	m.focus = f
+	if f == focusProjects {
 		m.projCursor = m.active
-	} else {
-		m.focus = focusTasks
 	}
 }
 
@@ -77,7 +93,9 @@ func (m Model) updateProjectsPanel(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// updateTasksPanel handles keys when the Tasks panel is focused.
+// updateTasksPanel handles keys when the Tasks panel is focused. The list is
+// navigation-only: selecting, adding, reordering, and the completed toggle.
+// Everything that mutates a single task lives in the Details panel.
 func (m Model) updateTasksPanel(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "j", "down":
@@ -96,51 +114,78 @@ func (m Model) updateTasksPanel(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "a":
 		m.beginInput(0, "", false)
 		return m, textinput.Blink
-	case "e":
-		if t, ok := m.selectedTask(); ok {
-			m.beginInput(t.ID, t.Title, false)
-			return m, textinput.Blink
-		}
-	case "n":
-		return m.beginNotes() // added in Task 6
-	case "g":
-		return m.beginTags()
 	case "enter", "space":
-		if t, ok := m.selectedTask(); ok {
-			m.setStatus(m.store.SetTaskDone(t.ID, !t.Done))
-			m.setStatus(m.reloadTasks())
-		}
-	case "d":
-		if t, ok := m.selectedTask(); ok {
-			m.setStatus(m.store.DeleteTask(t.ID))
-			m.setStatus(m.reloadTasks())
+		if _, ok := m.selectedTask(); ok {
+			m.setFocus(focusDetails)
 		}
 	case "J":
-		if t, ok := m.selectedTask(); ok {
+		// Reorder only open tasks; completed tasks are ordered by completion.
+		if t, ok := m.selectedTask(); ok && !t.Done {
 			m.setStatus(m.store.MoveTask(t.ID, 1))
 			m.setStatus(m.reloadTasks())
-			if m.cursor < len(m.tasks)-1 {
+			if m.cursor < m.visibleCount()-1 {
 				m.cursor++
 			}
 		}
 	case "K":
-		if t, ok := m.selectedTask(); ok {
+		if t, ok := m.selectedTask(); ok && !t.Done {
 			m.setStatus(m.store.MoveTask(t.ID, -1))
 			m.setStatus(m.reloadTasks())
 			if m.cursor > 0 {
 				m.cursor--
 			}
 		}
-	case "t":
-		if t, ok := m.selectedTask(); ok {
-			m.toggleTimer(t.ID)
-		}
-	case "p":
-		m.focus = focusProjects
-		m.projCursor = m.active
 	}
 	m.syncTaskScroll()
 	return m, nil
+}
+
+// updateDetailsPanel handles keys when the Details panel is focused. It owns
+// every per-task action for the selected task.
+func (m Model) updateDetailsPanel(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	t, ok := m.selectedTask()
+	if !ok {
+		if msg.String() == "esc" {
+			m.setFocus(focusTasks)
+		}
+		return m, nil
+	}
+	switch msg.String() {
+	case "e":
+		m.beginInput(t.ID, t.Title, false)
+		return m, textinput.Blink
+	case "n":
+		return m.beginNotes()
+	case "g":
+		return m.beginTags()
+	case "enter", "space":
+		m.setStatus(m.store.SetTaskDone(t.ID, !t.Done))
+		m.setStatus(m.reloadTasks())
+	case "t":
+		m.toggleTimer(t.ID)
+	case "d":
+		m.setStatus(m.store.DeleteTask(t.ID))
+		m.setStatus(m.reloadTasks())
+		m.setFocus(focusTasks)
+	case "j", "down":
+		m.scrollDetails(t, 1)
+	case "k", "up":
+		m.scrollDetails(t, -1)
+	case "esc":
+		m.setFocus(focusTasks)
+	}
+	return m, nil
+}
+
+// scrollDetails nudges the details viewport by delta lines, priming its content
+// first so SetYOffset clamps against the real height.
+func (m *Model) scrollDetails(t task, delta int) {
+	m.detailVP.SetContent(m.detailBody(t, true))
+	off := m.detailVP.YOffset() + delta
+	if off < 0 {
+		off = 0
+	}
+	m.detailVP.SetYOffset(off)
 }
 
 // syncTaskScroll refreshes the task viewport content and scrolls so the
@@ -265,6 +310,13 @@ func (m Model) notesOf(id int64) string {
 	return ""
 }
 
+// taskSelected reports whether row i is the highlighted task. The selection is
+// shown while either the Tasks list or the Details panel is focused, since both
+// act on that task; it is hidden while Projects is focused.
+func (m Model) taskSelected(i int) bool {
+	return (m.focus == focusTasks || m.focus == focusDetails) && i == m.cursor
+}
+
 func (m Model) selectedTask() (task, bool) {
 	vis, _ := m.visibleTasks()
 	if m.cursor < 0 || m.cursor >= len(vis) {
@@ -356,12 +408,12 @@ func (m Model) viewWorkspace() string {
 		detailContent = m.notesArea.View()
 	} else if t, ok := m.selectedTask(); ok {
 		dvp := m.detailVP
-		dvp.SetContent(m.detailBody(t))
+		dvp.SetContent(m.detailBody(t, m.focus == focusDetails))
 		detailContent = dvp.View()
 	} else {
 		detailContent = faintStyle.Render("No task selected.")
 	}
-	detailPanel := panel("Details", detailContent, false, rightW, detailPanelH)
+	detailPanel := panel("Details", detailContent, m.focus == focusDetails, rightW, detailPanelH)
 
 	right := lipgloss.JoinVertical(lipgloss.Left, tasksPanel, detailPanel)
 	body := lipgloss.JoinHorizontal(lipgloss.Top, left, right)
@@ -373,7 +425,14 @@ func (m Model) tasksHelp() string {
 	if m.notesEditing {
 		return "editing notes · ctrl+s save · esc cancel"
 	}
-	return "tab focus · j/k move · a add · e edit · n notes · g tags · t timer · c completed · h history · , settings · q"
+	switch m.focus {
+	case focusProjects:
+		return "tab focus · j/k move · enter select · a add project · h history · , settings · q"
+	case focusDetails:
+		return "tab focus · e title · n notes · g tags · enter done · t timer · d delete · j/k scroll · esc back · q"
+	default:
+		return "tab focus · j/k move · enter open · a add · J/K reorder · c completed · h history · , settings · q"
+	}
 }
 
 // taskListBody renders the task rows for the active project.
@@ -386,7 +445,7 @@ func (m Model) taskListBody() string {
 			b.WriteString(faintStyle.Render("─── completed ───") + "\n")
 		}
 		cursor := "  "
-		if m.focus == focusTasks && i == m.cursor {
+		if m.taskSelected(i) {
 			cursor = "▸ "
 		}
 		box := "[ ]"
@@ -407,7 +466,7 @@ func (m Model) taskListBody() string {
 		}
 		line := fmt.Sprintf("%s%s %s%s%s%s", cursor, box, t.Title, suffix, tags, clock)
 		switch {
-		case m.focus == focusTasks && i == m.cursor:
+		case m.taskSelected(i):
 			line = selectedStyle.Render(line)
 		case t.Done:
 			line = doneStyle.Render(line)

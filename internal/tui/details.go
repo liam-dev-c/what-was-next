@@ -7,8 +7,9 @@ import (
 	"github.com/liam-dev-c/what-was-next/internal/store"
 )
 
-// detailBody builds the Details panel content for the selected task.
-func (m Model) detailBody(t store.Task) string {
+// detailBody builds the Details panel content for the selected task. The edit
+// hints render only when the panel is focused, since editing lives there.
+func (m Model) detailBody(t store.Task, focused bool) string {
 	var b strings.Builder
 
 	status := successText("● open")
@@ -36,7 +37,7 @@ func (m Model) detailBody(t store.Task) string {
 	b.WriteString(faintStyle.Render(created) + "\n")
 
 	// Tags.
-	b.WriteString("\n" + selectedStyle.Render("tags") + faintStyle.Render("  (g to edit)") + "\n")
+	b.WriteString("\n" + selectedStyle.Render("tags") + editHint(focused, "g") + "\n")
 	if len(t.Tags) == 0 {
 		b.WriteString(faintStyle.Render("  —") + "\n")
 	} else {
@@ -44,13 +45,22 @@ func (m Model) detailBody(t store.Task) string {
 	}
 
 	// Notes.
-	b.WriteString("\n" + selectedStyle.Render("notes") + faintStyle.Render("  (n to edit)") + "\n")
+	b.WriteString("\n" + selectedStyle.Render("notes") + editHint(focused, "n") + "\n")
 	if strings.TrimSpace(t.Notes) == "" {
 		b.WriteString(faintStyle.Render("  —") + "\n")
 	} else {
 		b.WriteString(t.Notes + "\n")
 	}
 	return b.String()
+}
+
+// editHint renders the faint "(k to edit)" cue next to a section label, but
+// only while the Details panel is focused — that is the only place editing works.
+func editHint(focused bool, key string) string {
+	if !focused {
+		return ""
+	}
+	return faintStyle.Render("  (" + key + " to edit)")
 }
 
 // tagLabel renders tags as a space-separated "#name" list.

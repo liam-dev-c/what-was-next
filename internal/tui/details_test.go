@@ -11,7 +11,7 @@ func TestDetailBodyShowsStatusAndTime(t *testing.T) {
 	m := newModel(t)
 	tk, _ := m.store.CreateTask(m.activeProject().ID, "Ship it")
 	m.reloadTasks()
-	body := m.detailBody(m.tasks[0])
+	body := m.detailBody(m.tasks[0], true)
 	if !strings.Contains(body, "Ship it") {
 		t.Fatalf("detail missing title: %s", body)
 	}
@@ -30,8 +30,8 @@ func TestDetailBodyDoneStatus(t *testing.T) {
 	m.reloadTasks()
 	m.store.SetTaskDone(m.tasks[0].ID, true)
 	m.reloadTasks()
-	if !strings.Contains(m.detailBody(m.tasks[0]), "done") {
-		t.Fatalf("want done status, got: %s", m.detailBody(m.tasks[0]))
+	if !strings.Contains(m.detailBody(m.tasks[0], true), "done") {
+		t.Fatalf("want done status, got: %s", m.detailBody(m.tasks[0], true))
 	}
 }
 
@@ -49,6 +49,7 @@ func TestNotesEditSaves(t *testing.T) {
 	m.store.CreateTask(m.activeProject().ID, "Task")
 	m.reloadTasks()
 
+	m.focus = focusDetails
 	mi, _ := m.updateTasks(key('n'))
 	m = mi.(Model)
 	if !m.notesEditing {
@@ -73,6 +74,7 @@ func TestNotesEditCancel(t *testing.T) {
 	m.screen = screenTasks
 	m.store.CreateTask(m.activeProject().ID, "Task")
 	m.reloadTasks()
+	m.focus = focusDetails
 	mi, _ := m.updateTasks(key('n'))
 	m = mi.(Model)
 	mi, _ = m.updateTasks(key('x'))
@@ -89,6 +91,7 @@ func TestQuitDoesNotFireWhileEditingNotes(t *testing.T) {
 	m.screen = screenTasks
 	m.store.CreateTask(m.activeProject().ID, "Task")
 	m.reloadTasks()
+	m.focus = focusDetails
 	mi, _ := m.updateTasks(key('n')) // enter notes editing
 	m = mi.(Model)
 	if !m.notesEditing {

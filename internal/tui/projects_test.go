@@ -13,11 +13,11 @@ func TestProjectsPanelFocusAndSelect(t *testing.T) {
 	m.store.CreateTask(p.ID, "Work task")
 	m.reloadProjects()
 
-	// Tab to focus the projects panel.
-	mi, _ := m.updateTasks(tea.KeyPressMsg{Code: tea.KeyTab})
+	// shift+tab from Tasks steps back to the Projects panel.
+	mi, _ := m.updateTasks(tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift})
 	m = mi.(Model)
 	if m.focus != focusProjects {
-		t.Fatal("want projects focused after tab")
+		t.Fatal("want projects focused after shift+tab")
 	}
 	// Move to "Work" (index 1) and select it.
 	mi, _ = m.updateTasks(key('j'))
