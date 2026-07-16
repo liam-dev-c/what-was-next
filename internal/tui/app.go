@@ -36,7 +36,12 @@ type focusArea int
 const (
 	focusTasks focusArea = iota
 	focusProjects
+	focusDetails
 )
+
+// focusOrder is the left-to-right, top-to-bottom cycle tab walks through:
+// Projects (left) → Tasks (top-right) → Details (bottom-right) → Projects.
+var focusOrder = []focusArea{focusProjects, focusTasks, focusDetails}
 
 // Model is the root Bubble Tea model. Screen-specific state is added by the
 // task/project/timer/summary tasks; Update/View dispatch on m.screen.

@@ -119,6 +119,7 @@ func TestNarrowRendersNotesEditor(t *testing.T) {
 	m.reloadTasks()
 	mi, _ := m.Update(tea.WindowSizeMsg{Width: 50, Height: 20})
 	m = mi.(Model)
+	m.focus = focusDetails // notes editing lives in the Details panel now
 	mi, _ = m.updateTasks(key('n'))
 	m = mi.(Model)
 	out := m.viewTasks() // narrow path
