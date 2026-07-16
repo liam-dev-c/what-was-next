@@ -78,13 +78,12 @@ Projects panel:
 | `enter` | switch to project |
 | `a` | add project |
 
-Summary screen:
+History screen (open with `h`):
 
 | Key | Action |
 |-----|--------|
 | `d` / `w` | day / week view |
-| `t` | tasks |
-| `p` | projects |
+| `esc` | back to tasks |
 | `,` | settings |
 | `q` | quit |
 
