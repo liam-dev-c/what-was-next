@@ -7,8 +7,8 @@ permissions:
   contents: write
 
 jobs:
-  tag:
-    name: Tag & release
+  version:
+    name: Compute & push tag
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.version.outputs.next }}
@@ -16,10 +16,6 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           fetch-tags: true
-
-      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
-        with:
-          go-version-file: go.mod
 
       - name: Compute date-based tag
         id: version
@@ -46,33 +42,71 @@ jobs:
           git tag -a "$NEXT" -m "Release $NEXT"
           git push origin "$NEXT"
 
-      - name: Build release binaries
+  build:
+    name: Build ${{ matrix.os }}/${{ matrix.arch }}
+    needs: version
+    runs-on: ubuntu-latest
+    # One target per runner so the four cross-compiles happen in parallel
+    # instead of sequentially. modernc.org/sqlite is slow to compile and each
+    # GOOS/GOARCH is its own build-cache namespace, so serial builds paid that
+    # cost four times over.
+    strategy:
+      matrix:
+        os: [darwin, linux]
+        arch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
         run: |
           set -euo pipefail
-          mkdir -p dist
           # modernc.org/sqlite is pure Go, so CGO is not needed and we can
           # cross-compile every target from the Ubuntu runner.
-          for os in darwin linux; do
-            for arch in amd64 arm64; do
-              out="dist/what-was-next-$os-$arch"
-              echo "Building $out"
-              CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" \
-                go build -trimpath -ldflags "-s -w" -o "$out" .
-            done
-          done
+          out="what-was-next-${GOOS}-${GOARCH}"
+          echo "Building $out"
+          CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o "$out" .
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: what-was-next-${{ matrix.os }}-${{ matrix.arch }}
+          path: what-was-next-${{ matrix.os }}-${{ matrix.arch }}
+          if-no-files-found: error
+          retention-days: 1
+
+  release:
+    name: Create GitHub release
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          path: dist
+          pattern: what-was-next-*
+          merge-multiple: true
 
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-          NEXT: ${{ steps.version.outputs.next }}
+          NEXT: ${{ needs.version.outputs.tag }}
         run: |
           set -euo pipefail
-          gh release create "$NEXT" --title "$NEXT" --generate-notes --verify-tag \
+          gh release create "$NEXT" --repo "$GITHUB_REPOSITORY" \
+            --title "$NEXT" --generate-notes --verify-tag \
             dist/what-was-next-*
 
   bump-formula:
     name: Bump Homebrew formula
-    needs: tag
+    needs: [version, release]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout what-was-next (for the renderer script)
@@ -90,7 +124,7 @@ jobs:
       - name: Download release binaries
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ needs.tag.outputs.tag }}
+          TAG: ${{ needs.version.outputs.tag }}
         run: |
           set -euo pipefail
           mkdir -p dist
@@ -100,7 +134,7 @@ jobs:
 
       - name: Render formula
         env:
-          TAG: ${{ needs.tag.outputs.tag }}
+          TAG: ${{ needs.version.outputs.tag }}
         run: |
           set -euo pipefail
           mkdir -p tap/Formula
@@ -110,7 +144,7 @@ jobs:
 
       - name: Commit and push
         env:
-          TAG: ${{ needs.tag.outputs.tag }}
+          TAG: ${{ needs.version.outputs.tag }}
         run: |
           set -euo pipefail
           cd tap
