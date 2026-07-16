@@ -19,7 +19,21 @@ jobs:
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version: '1.26'
-          cache: true
+          # Opt out of setup-go's shared cache key: it isn't job-scoped, so the
+          # lint job (non-race build) and this job would collide on one key and
+          # the first to save wins. That left the race-instrumented objects this
+          # job needs perpetually uncached. Use a dedicated -race key below.
+          cache: false
+
+      - name: Cache Go build & modules (race)
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-race-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-race-
 
       - name: Check formatting
         run: |
