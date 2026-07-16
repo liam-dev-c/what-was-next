@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -80,12 +81,17 @@ func (m Model) updateProjectsPanel(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 func (m Model) updateTasksPanel(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "j", "down":
-		if m.cursor < len(m.tasks)-1 {
+		if m.cursor < m.visibleCount()-1 {
 			m.cursor++
 		}
 	case "k", "up":
 		if m.cursor > 0 {
 			m.cursor--
+		}
+	case "c":
+		m.showAllCompleted = !m.showAllCompleted
+		if n := m.visibleCount(); m.cursor >= n {
+			m.cursor = max(0, n-1)
 		}
 	case "a":
 		m.beginInput(0, "", false)
@@ -260,14 +266,63 @@ func (m Model) notesOf(id int64) string {
 }
 
 func (m Model) selectedTask() (task, bool) {
-	if m.cursor < 0 || m.cursor >= len(m.tasks) {
+	vis, _ := m.visibleTasks()
+	if m.cursor < 0 || m.cursor >= len(vis) {
 		return task{}, false
 	}
-	return m.tasks[m.cursor], true
+	return vis[m.cursor], true
 }
 
 // task is an alias for store.Task used above; declared here to keep imports local.
 type task = storeTask
+
+// visibleTasks is the current display order for the tasks list, computed from
+// m.tasks against the wall clock and the show-all-completed toggle.
+func (m Model) visibleTasks() (tasks []task, doneStart int) {
+	return partitionTasks(m.tasks, time.Now(), m.showAllCompleted)
+}
+
+// startOfDay returns local midnight for t.
+func startOfDay(t time.Time) time.Time {
+	y, mo, d := t.Date()
+	return time.Date(y, mo, d, 0, 0, 0, 0, t.Location())
+}
+
+// partitionTasks orders tasks for display: open tasks first in their existing
+// sort_order, then completed tasks sorted by completion time (newest first).
+// Completed tasks finished before today's local midnight are hidden unless
+// showAll is set. doneStart is the index where the completed group begins,
+// which equals len(visible) when no completed task is shown.
+func partitionTasks(tasks []task, now time.Time, showAll bool) (visible []task, doneStart int) {
+	today := startOfDay(now)
+	var open, done []task
+	for _, t := range tasks {
+		if !t.Done {
+			open = append(open, t)
+			continue
+		}
+		if !showAll && (t.DoneAt == nil || t.DoneAt.Local().Before(today)) {
+			continue
+		}
+		done = append(done, t)
+	}
+	sort.SliceStable(done, func(i, j int) bool { return doneAtAfter(done[i], done[j]) })
+	visible = append(open, done...)
+	return visible, len(open)
+}
+
+// doneAtAfter reports whether a was completed more recently than b. A nil
+// DoneAt (should not happen for a done task, but guard anyway) sorts last.
+func doneAtAfter(a, b task) bool {
+	switch {
+	case a.DoneAt == nil:
+		return false
+	case b.DoneAt == nil:
+		return true
+	default:
+		return a.DoneAt.After(*b.DoneAt)
+	}
+}
 
 func (m Model) viewTasks() string {
 	if m.width > 0 && m.width < minWorkspaceWidth {
@@ -318,14 +373,18 @@ func (m Model) tasksHelp() string {
 	if m.notesEditing {
 		return "editing notes · ctrl+s save · esc cancel"
 	}
-	return "tab focus · j/k move · a add · e edit · n notes · g tags · t timer · h history · , settings · q"
+	return "tab focus · j/k move · a add · e edit · n notes · g tags · t timer · c completed · h history · , settings · q"
 }
 
 // taskListBody renders the task rows for the active project.
 func (m Model) taskListBody() string {
 	var b strings.Builder
 	running, _ := m.store.RunningEntry()
-	for i, t := range m.tasks {
+	vis, doneStart := m.visibleTasks()
+	for i, t := range vis {
+		if i == doneStart && doneStart < len(vis) {
+			b.WriteString(faintStyle.Render("─── completed ───") + "\n")
+		}
 		cursor := "  "
 		if m.focus == focusTasks && i == m.cursor {
 			cursor = "▸ "
@@ -355,8 +414,12 @@ func (m Model) taskListBody() string {
 		}
 		b.WriteString(line + "\n")
 	}
-	if len(m.tasks) == 0 {
-		b.WriteString(faintStyle.Render("No tasks yet — press 'a' to add one."))
+	if len(vis) == 0 {
+		if len(m.tasks) == 0 {
+			b.WriteString(faintStyle.Render("No tasks yet — press 'a' to add one."))
+		} else {
+			b.WriteString(faintStyle.Render("No open tasks — press 'c' to show completed."))
+		}
 	}
 	if m.editing {
 		verb := "New task"
