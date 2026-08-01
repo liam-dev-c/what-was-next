@@ -210,3 +210,38 @@ func TestTaskScrollFollowsCursor(t *testing.T) {
 		t.Fatal("want task viewport scrolled to keep cursor visible")
 	}
 }
+
+func TestMouseWheelScrollsFocusedViewportVertically(t *testing.T) {
+	m := newModel(t)
+	m.screen = screenTasks
+	mi, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 16})
+	m = mi.(Model)
+	for i := 0; i < 30; i++ {
+		m.store.CreateTask(m.activeProject().ID, "Task "+string(rune('a'+i%26)))
+	}
+	m.reloadTasks()
+	m.setFocus(focusTasks)
+
+	mi, _ = m.Update(tea.MouseWheelMsg{Button: tea.MouseWheelDown})
+	m = mi.(Model)
+	if m.taskVP.YOffset() == 0 {
+		t.Fatal("want mouse wheel down to scroll the focused Tasks viewport")
+	}
+}
+
+func TestMouseWheelScrollsFocusedViewportHorizontally(t *testing.T) {
+	m := newModel(t)
+	m.screen = screenTasks
+	mi, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 16})
+	m = mi.(Model)
+	id, _ := m.store.CreateTask(m.activeProject().ID, "Long task")
+	m.store.UpdateTask(id.ID, "Long task", strings.Repeat("x", 400))
+	m.reloadTasks()
+	m.setFocus(focusDetails)
+
+	mi, _ = m.Update(tea.MouseWheelMsg{Button: tea.MouseWheelRight})
+	m = mi.(Model)
+	if m.detailVP.XOffset() == 0 {
+		t.Fatal("want mouse wheel right to pan the focused Details viewport horizontally")
+	}
+}

@@ -329,6 +329,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case screenSettings:
 			return m.updateSettings(msg)
 		}
+	case tea.MouseWheelMsg:
+		if m.screen == screenTasks {
+			m.scrollFocusedViewport(msg)
+		}
+		return m, nil
 	}
 	return m, nil
 }
@@ -346,7 +351,27 @@ func (m Model) View() tea.View {
 	v := tea.NewView(content)
 	// v2 replaces the tea.WithAltScreen program option with a per-view field.
 	v.AltScreen = true
+	// Same for mouse support: without this, terminals never send wheel events,
+	// so the Tasks/Details viewports can't be scrolled with the mouse.
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
+}
+
+// scrollFocusedViewport forwards a mouse wheel event to whichever panel's
+// viewport currently has keyboard focus — the same panel j/k would scroll.
+// viewport.Update handles both vertical (wheel up/down) and horizontal
+// (shift+wheel, or a dedicated left/right wheel event) scrolling itself.
+func (m *Model) scrollFocusedViewport(msg tea.MouseWheelMsg) {
+	switch m.focus {
+	case focusTasks:
+		m.taskVP.SetContent(m.taskListBody())
+		m.taskVP, _ = m.taskVP.Update(msg)
+	case focusDetails:
+		if t, ok := m.selectedTask(); ok {
+			m.detailVP.SetContent(m.detailBody(t, true))
+			m.detailVP, _ = m.detailVP.Update(msg)
+		}
+	}
 }
 
 func (m *Model) setStatus(err error) {
