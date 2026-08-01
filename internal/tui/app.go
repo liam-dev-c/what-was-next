@@ -334,8 +334,43 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.scrollFocusedViewport(msg)
 		}
 		return m, nil
+	case tea.MouseClickMsg:
+		// Ignore clicks while typing: switching focus out from under an open
+		// input/textarea would abandon it silently instead of via esc/enter.
+		if msg.Button == tea.MouseLeft && m.screen == screenTasks &&
+			!m.editing && !m.notesEditing {
+			if f, ok := m.focusForClick(msg.X, msg.Y); ok {
+				m.setFocus(f)
+			}
+		}
+		return m, nil
 	}
 	return m, nil
+}
+
+// focusForClick maps a mouse click's screen coordinates to the panel under
+// it, matching the layout viewWorkspace renders. Only valid in the wide
+// (two-column) workspace layout; the narrow single-column view has no fixed
+// panel boundaries to click.
+func (m Model) focusForClick(x, y int) (focusArea, bool) {
+	if m.width < minWorkspaceWidth || x < 0 || y < 0 {
+		return 0, false
+	}
+	tasksPanelH, detailPanelH := m.rightColumnHeights()
+	if x < projectsPanelWidth {
+		if y < tasksPanelH+detailPanelH {
+			return focusProjects, true
+		}
+		return 0, false
+	}
+	switch {
+	case y < tasksPanelH:
+		return focusTasks, true
+	case y < tasksPanelH+detailPanelH:
+		return focusDetails, true
+	default:
+		return 0, false
+	}
 }
 
 func (m Model) View() tea.View {
