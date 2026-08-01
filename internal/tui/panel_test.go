@@ -211,6 +211,58 @@ func TestTaskScrollFollowsCursor(t *testing.T) {
 	}
 }
 
+func TestMouseClickChangesFocusedPanel(t *testing.T) {
+	m := newModel(t)
+	m.screen = screenTasks
+	mi, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 16})
+	m = mi.(Model)
+	tasksPanelH, detailPanelH := m.rightColumnHeights()
+
+	// startFocus is always something other than the click's expected result
+	// (or, for the "no panel" case, just a known sentinel) so a no-op click
+	// is distinguishable from a successful one.
+	cases := []struct {
+		name       string
+		x, y       int
+		startFocus focusArea
+		want       focusArea
+		wantChange bool
+	}{
+		{"projects", 2, 2, focusTasks, focusProjects, true},
+		{"tasks", 30, 1, focusProjects, focusTasks, true},
+		{"details", 30, tasksPanelH + 1, focusProjects, focusDetails, true},
+		{"below panels", 2, tasksPanelH + detailPanelH + 1, focusTasks, focusTasks, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			m.focus = c.startFocus
+			mi, _ := m.Update(tea.MouseClickMsg{Button: tea.MouseLeft, X: c.x, Y: c.y})
+			mm := mi.(Model)
+			if mm.focus != c.want {
+				t.Fatalf("click at (%d,%d): want focus %v, got %v", c.x, c.y, c.want, mm.focus)
+			}
+			if !c.wantChange && mm.focus != c.startFocus {
+				t.Fatalf("click at (%d,%d) outside any panel should not change focus, got %v", c.x, c.y, mm.focus)
+			}
+		})
+	}
+}
+
+func TestMouseClickIgnoredWhileEditing(t *testing.T) {
+	m := newModel(t)
+	m.screen = screenTasks
+	mi, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 16})
+	m = mi.(Model)
+	m.focus = focusTasks
+	m.editing = true
+
+	mi, _ = m.Update(tea.MouseClickMsg{Button: tea.MouseLeft, X: 2, Y: 2})
+	mm := mi.(Model)
+	if mm.focus != focusTasks {
+		t.Fatalf("click while editing should not change focus, got %v", mm.focus)
+	}
+}
+
 func TestMouseWheelScrollsFocusedViewportVertically(t *testing.T) {
 	m := newModel(t)
 	m.screen = screenTasks
