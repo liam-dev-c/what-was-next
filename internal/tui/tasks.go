@@ -106,6 +106,10 @@ func (m Model) updateTasksPanel(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if m.cursor > 0 {
 			m.cursor--
 		}
+	case "left":
+		m.scrollTaskX(-4)
+	case "right":
+		m.scrollTaskX(4)
 	case "c":
 		m.showAllCompleted = !m.showAllCompleted
 		if n := m.visibleCount(); m.cursor >= n {
@@ -171,6 +175,10 @@ func (m Model) updateDetailsPanel(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.scrollDetails(t, 1)
 	case "k", "up":
 		m.scrollDetails(t, -1)
+	case "left":
+		m.scrollDetailsX(t, -4)
+	case "right":
+		m.scrollDetailsX(t, 4)
 	case "esc":
 		m.setFocus(focusTasks)
 	}
@@ -186,6 +194,28 @@ func (m *Model) scrollDetails(t task, delta int) {
 		off = 0
 	}
 	m.detailVP.SetYOffset(off)
+}
+
+// scrollDetailsX pans the details viewport horizontally by delta columns,
+// priming its content first so the scroll clamps against the real width.
+func (m *Model) scrollDetailsX(t task, delta int) {
+	m.detailVP.SetContent(m.detailBody(t, true))
+	if delta > 0 {
+		m.detailVP.ScrollRight(delta)
+	} else {
+		m.detailVP.ScrollLeft(-delta)
+	}
+}
+
+// scrollTaskX pans the task list viewport horizontally by delta columns,
+// priming its content first so the scroll clamps against the real width.
+func (m *Model) scrollTaskX(delta int) {
+	m.taskVP.SetContent(m.taskListBody())
+	if delta > 0 {
+		m.taskVP.ScrollRight(delta)
+	} else {
+		m.taskVP.ScrollLeft(-delta)
+	}
 }
 
 // syncTaskScroll refreshes the task viewport content and scrolls so the
@@ -429,9 +459,9 @@ func (m Model) tasksHelp() string {
 	case focusProjects:
 		return "tab focus · j/k move · enter select · a add project · h history · , settings · q"
 	case focusDetails:
-		return "tab focus · e title · n notes · g tags · enter done · t timer · d delete · j/k scroll · esc back · q"
+		return "tab focus · e title · n notes · g tags · enter done · t timer · d delete · j/k/←/→ scroll · esc back · q"
 	default:
-		return "tab focus · j/k move · enter open · a add · J/K reorder · c completed · h history · , settings · q"
+		return "tab focus · j/k move · ←/→ scroll · enter open · a add · J/K reorder · c completed · h history · , settings · q"
 	}
 }
 
@@ -505,8 +535,20 @@ func (m Model) viewTasksNarrow() string {
 	b.WriteString(titleStyle.Render("what was next — " + m.activeProject().Name))
 	b.WriteString("\n")
 	b.WriteString(m.taskListBody())
-	if m.notesEditing {
+	switch {
+	case m.notesEditing:
 		b.WriteString("\n" + m.notesArea.View() + "\n")
+	case m.focus == focusDetails:
+		// The workspace layout sizes detailVP for the two-column view; narrow
+		// mode is single-column, so its width must be recomputed here. Without
+		// this, opening Details and scrolling (mouse or keyboard) changed the
+		// viewport's offset but nothing was ever rendered to show it.
+		if t, ok := m.selectedTask(); ok {
+			dvp := m.detailVP
+			dvp.SetWidth(max(1, m.width-2))
+			dvp.SetContent(m.detailBody(t, true))
+			b.WriteString("\n" + dvp.View() + "\n")
+		}
 	}
 	b.WriteString("\n")
 	b.WriteString(helpStyle.Render(m.tasksHelp()))
