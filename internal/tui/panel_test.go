@@ -229,6 +229,50 @@ func TestMouseWheelScrollsFocusedViewportVertically(t *testing.T) {
 	}
 }
 
+func TestKeyboardScrollsDetailsHorizontally(t *testing.T) {
+	m := newModel(t)
+	m.screen = screenTasks
+	mi, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 16})
+	m = mi.(Model)
+	id, _ := m.store.CreateTask(m.activeProject().ID, "Long task")
+	m.store.UpdateTask(id.ID, "Long task", strings.Repeat("x", 400))
+	m.reloadTasks()
+	m.setFocus(focusDetails)
+
+	mi, _ = m.updateTasks(tea.KeyPressMsg{Code: tea.KeyRight})
+	m = mi.(Model)
+	if m.detailVP.XOffset() == 0 {
+		t.Fatal("want the right arrow key to pan the Details viewport horizontally")
+	}
+}
+
+func TestNarrowViewRendersFocusedDetailsPanel(t *testing.T) {
+	m := newModel(t)
+	m.screen = screenTasks
+	mi, _ := m.Update(tea.WindowSizeMsg{Width: 60, Height: 20})
+	m = mi.(Model)
+	id, _ := m.store.CreateTask(m.activeProject().ID, "Narrow task")
+	m.store.UpdateTask(id.ID, "Narrow task", "unique note body")
+	m.reloadTasks()
+	m.setFocus(focusDetails)
+
+	before := m.viewTasks()
+	if strings.Contains(before, "no time tracked") == false {
+		t.Fatalf("narrow view should render the focused Details panel, got:\n%s", before)
+	}
+	for i := 0; i < 6; i++ {
+		mi, _ = m.updateTasks(key('j'))
+		m = mi.(Model)
+	}
+	after := m.viewTasks()
+	if before == after {
+		t.Fatal("narrow view's Details panel did not visibly scroll")
+	}
+	if !strings.Contains(after, "unique note body") {
+		t.Fatalf("scrolled narrow Details panel should reveal the notes body, got:\n%s", after)
+	}
+}
+
 func TestMouseWheelScrollsFocusedViewportHorizontally(t *testing.T) {
 	m := newModel(t)
 	m.screen = screenTasks
